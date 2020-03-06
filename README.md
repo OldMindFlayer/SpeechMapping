@@ -1,2 +1,4 @@
 # SpeechMapping
-intraoperative speech mapping
+Scrips for intraoperative speech mapping
+
+python main.py
