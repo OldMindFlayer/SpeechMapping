@@ -20,10 +20,10 @@ WINDOW_Y = 1280
 
 class Display:
     def __init__(self, q_from_display_to_listener):
-        self.path_action = config.config['general']['general_path'] + 'resources/pictures_action/'
-        self.path_object = config.config['general']['general_path'] + 'resources/pictures_object/'
-        self.path_other = config.config['general']['general_path'] + 'resources/pictures_other/'
-        self.path_sound = config.config['general']['general_path'] + 'resources/sounds/tone.wav'
+        self.path_action = config.config['general']['root_path'] + '/resources/pictures_action/'
+        self.path_object = config.config['general']['root_path'] + '/resources/pictures_object/'
+        self.path_other = config.config['general']['root_path'] + '/resources/pictures_other/'
+        self.path_sound = config.config['general']['root_path'] + '/resources/sounds/tone.wav'
         
         self.q_from_display_to_listener = q_from_display_to_listener
         self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))

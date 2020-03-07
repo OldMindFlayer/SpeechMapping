@@ -10,7 +10,6 @@ import numpy as np
 import time
 import h5py
 from queue import Queue
-from lsl_generator_debug import DebudStream
 from data_saving import SavePatientData
 import config
 
@@ -147,6 +146,8 @@ class LSL_Listener():
     def _resolve_q(self):
         while not self.q_from_display_to_listener.empty():
             key, value = self.q_from_display_to_listener.get()
+            if config.config['general'].getboolean('debug_mode'):
+                print(key, value)
             if key == 'patient_state':
                 self.patient_state = value
             elif key == 'lsl_stream_listener_state':
@@ -161,20 +162,21 @@ class LSL_Listener():
 
 
 if __name__ == '__main__':
-    config.init()
-    debug_stream = DebudStream(10000, 68, 2048)
-    debug_stream.start()
-    time.sleep(1)
-    q = Queue()
-    lsl_listener = LSL_Listener(2048, q)
-    lsl_listener.record_using_buffer()
+    pass
+    #config.init()
+    #debug_stream = LSL_Generator(10000, 68, 2048)
+    #debug_stream.start()
+    #time.sleep(1)
+    #q = Queue()
+    #lsl_listener = LSL_Listener(2048, q)
+    #lsl_listener.record_using_buffer()
     
-    path = lsl_listener.saver.path_h5file
-    with h5py.File(path, "r") as file:
-        ds1 = file['data_rest']['raw_data'].shape
-        ds2 = file['data_actions']['raw_data'].shape
-        ds3 = file['data_objects']['raw_data'].shape
-        print(ds1)
+    #path = lsl_listener.saver.path_h5file
+    #with h5py.File(path, "r") as file:
+    #    ds1 = file['data_rest']['raw_data'].shape
+    #    ds2 = file['data_actions']['raw_data'].shape
+    #    ds3 = file['data_objects']['raw_data'].shape
+    #    print(ds1)
     
     
 

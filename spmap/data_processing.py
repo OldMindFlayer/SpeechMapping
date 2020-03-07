@@ -14,19 +14,11 @@ import errno
 import sys
 import config
 
-path_to_experiment_data = sys.argv[1] + '/experiment_data/experiment_data.h5'
-path_to_results = sys.argv[1] + '/results_full/R2.png'
-#debug = False
+arg = sys.argv
+path_to_experiment_data = arg[1] + '/experiment_data/experiment_data.h5'
+path_to_results = arg[1] + '/results_full/R2.png'
 
-#if debug:
-    #path_from_main = 'C:/Workspace/SpeechMappingRelease/data/Sysoeva/11_10_19/'
-#else:
-    #config.init()
-    #path_to_experiment_data = config.config['general']['general_path'] + 'data/' + \
-    #config.config['patient_info']['patient_name'] + '/' + config.config['patient_info']['patient_date'] + '/' + \
-    #'experiment_data/experiment_data.h5'
-
-
+print(path_to_experiment_data)
 
 
 GRID_X  = 8;

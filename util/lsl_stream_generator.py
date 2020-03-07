@@ -14,16 +14,17 @@ import h5py
 import config
 
 
-class DebudStream():
-    def __init__(self, stream_time, channel_count, nominal_srate):
+class LSL_Generator():
+    def __init__(self, stream_time, channel_count, nominal_srate, q_from_display_to_listener):
         self.channel_count = channel_count
         self.nominal_srate = nominal_srate
         self.seconnds_per_sample = 1 / self.nominal_srate
         self.stream_time = stream_time
+        self.q_from_display_to_listener = q_from_display_to_listener
         if config.config['general'].getboolean('lsl_outlet_random'):
             self.thread = Thread(target=self._stream, args=())
         else:
-            self.stream_time = 20000
+            self.stream_time = 30000
             self.thread = Thread(target=self._stream_debug, args=())
         
     def start(self):
@@ -52,40 +53,41 @@ class DebudStream():
                                  self.nominal_srate, pylsl.cf_float32, 'dsffwerwer')
         outlet = pylsl.stream_outlet(info)
         print('DebudStream: Streaming start...')
-        path_rest = 'C:/Workspace/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_rest/experiment_data.h5'
-        path_actions = 'C:/Workspace/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_actions/experiment_data.h5'
-        path_objects = 'C:/Workspace/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_objects/experiment_data.h5'
+        path_rest = 'C:/Workspace/SpeechMapping/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_rest/experiment_data.h5'
+        path_actions = 'C:/Workspace/SpeechMapping/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_actions/experiment_data.h5'
+        path_objects = 'C:/Workspace/SpeechMapping/SpeechMappingv0_3/data/Sysoeva/10_10_19/data_objects/experiment_data.h5'
         paths = [path_rest, path_actions, path_objects]
-        config.lsl_stream_listener_state = True
+        self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))
         time.sleep(3)
         for i in range(len(paths)):
+            self.q_from_display_to_listener.put(('patient_state',i+1))
             with h5py.File(paths[i], "r") as file:
                 data = file['protocol1']['raw_data']
-                data_length = data.shape[0]
+                #data_length = data.shape[0]
                 index = 0
                 start_time = time.time()
                 current_time = time.time()
-                config.patient_state = (i+1)
-                while (time.time() - start_time < self.stream_time) and index < data_length:
+                
+                while (time.time() - start_time < self.stream_time) and index < 100000:
                     if time.time() - current_time > 1/2048:
                         current_time = time.time()
                         sample = data[index, :68]
                         outlet.push_sample(sample)
                         index += 1
-                        if index % 1000 == 0:
-                            print('Index: ', index)
+                        if index % 100 == 0:
+                            print('State: ', i+1, 'Index: ', index)
                     time.sleep(0.0001)
+        
+        self.q_from_display_to_listener.put(('patient_state', 0))
         time.sleep(1)
-        config.lsl_stream_listener_state = False        
-            
+        self.q_from_display_to_listener.put(('lsl_stream_listener_state', False))
+        time.sleep(1)
         print('DebudStream: Streaming stop...')    
         
     
             
 if __name__ == '__main__':
-    config.init()
-    stream = DebudStream(20, 68, 2048)
-    stream.start()
+
 
     #print(streams[0].name())
     #print(streams[1].name())

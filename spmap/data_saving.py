@@ -13,7 +13,7 @@ import config
 
 class SavePatientData():
     def __init__(self, fs):
-        self.dir_subject = config.config['general']['general_path'] + 'data/'
+        self.dir_subject = config.config['general']['root_path'] + '/data/'
         self.fs = fs
         
         windows_path = WindowsPath(self.dir_subject)
