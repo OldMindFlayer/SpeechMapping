@@ -2,7 +2,7 @@
 """
 Created on Sat Feb 29 08:52:02 2020
 
-@author: dblok
+@author: dblokv@gmail.com
 """
 
 from display import Display
@@ -17,6 +17,13 @@ def start():
    
     # Queue is used to pass arguments from display thread to main thread (to LSL_Listener)
     q_from_display_to_listener = Queue()
+    
+        # Path autogeneration ignores path in config and generate path based on location of 'main.py'
+    if config.config['general'].getboolean('root_path_autogeneration'):
+        config.config['general']['root_path'] = str(Path('main.py').resolve().parents[1])
+    if  config.config['patient_info'].getboolean('patient_date_autogeneration'):
+        config.config['patient_info']['patient_date'] = time.strftime('%d_%m_%y')
+    
     
     # Debug mode uses LSL_Generator for debuging
     if config.config['general'].getboolean('debug_mode'):
@@ -35,11 +42,6 @@ def start():
         lsl_stream_debug.start()
         time.sleep(1)
         
-    # Path autogeneration ignores path in config and generate path based on location of 'main.py'
-    if config.config['general'].getboolean('root_path_autogeneration'):
-        config.config['general']['root_path'] = str(Path('main.py').resolve().parents[1])
-    if  config.config['patient_info'].getboolean('patient_date_autogeneration'):
-        config.config['patient_info']['patient_date'] = time.strftime('%d_%m_%y')
         
 
     lsl_listener = LSL_Listener(2048, q_from_display_to_listener)

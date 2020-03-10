@@ -41,7 +41,7 @@ class LSL_Listener():
             print('LSL_Listener: number of streams: ', len(streams), '  Stream: ', streams[0])
             self.ecogInlet = StreamInlet(streams[0], self.maxbuffer_size)
         else:
-            streams = resolve_stream('type', 'EEG')
+            streams = resolve_stream('name', config.config['general']['lsl_stream_name'])
             self.ecogInlet = StreamInlet(streams[0], self.maxbuffer_size)
         print("LSL_Listener: Stream resolved")
 
@@ -61,7 +61,7 @@ class LSL_Listener():
                 self._save_buffer(current_patient_state)
                 current_patient_state = self.patient_state
             if timestamp:
-                sample = np.reshape(sample, (1, 68))
+                sample = np.reshape(sample, (1, 69))
                 timestamp = np.array([[timestamp]])
                 picture_type_array = np.array([[self.patient_state]])
                 if self.picture_shown:
@@ -94,7 +94,7 @@ class LSL_Listener():
             self._resolve_q()
             sample, timestamp = self.ecogInlet.pull_sample(timeout=0.0)
             if timestamp:
-                sample = np.reshape(sample, (1, 68))
+                sample = np.reshape(sample, (1, 69))
                 timestamp = np.array([[timestamp]])
                 picture_type_array = np.array([[self.patient_state]])
                 if self.picture_shown:

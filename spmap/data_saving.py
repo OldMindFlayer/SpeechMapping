@@ -40,9 +40,9 @@ class SavePatientData():
         self.path_h5file = windows_path/"experiment_data.h5"
         if not self.path_h5file.is_file():
             with h5py.File(self.path_h5file, 'a') as file:
-                file.create_dataset(self.groups[0] + '/raw_data', (0, 71), maxshape=(None, 71))
-                file.create_dataset(self.groups[1] + '/raw_data', (0, 71), maxshape=(None, 71))
-                file.create_dataset(self.groups[2] + '/raw_data', (0, 71), maxshape=(None, 71))
+                file.create_dataset(self.groups[0] + '/raw_data', (0, 72), maxshape=(None, 72))
+                file.create_dataset(self.groups[1] + '/raw_data', (0, 72), maxshape=(None, 72))
+                file.create_dataset(self.groups[2] + '/raw_data', (0, 72), maxshape=(None, 72))
                 file.create_dataset('fs', data=np.array(self.fs))
 
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     save_data.reforge_into_raw_data()
     add = 0
     if add:
-        a = np.random.random(size=(3,71))
+        a = np.random.random(size=(3,72))
         for i in range(2):
             save_data.save_data_rest(a)
         for i in range(6):

@@ -40,6 +40,10 @@ class Display:
         self.pictures_action = []
         self.pictures_object = []
         self.pictures_other = []
+        if config.config['display'].getboolean('pictures_full_screen'):
+            self.pictures_action_fullscreen = []
+            self.pictures_object_fullscreen = []
+            self.pictures_other_fullscreen = []
         self.pictures_action_mod = []
         self.pictures_object_mod = []
         self.pictures_other_mod = []
@@ -168,10 +172,29 @@ class Display:
     
     
     def _prepare_pictures(self):
-        self._prepare_pictures_helper(self.pictures_action, self.pictures_action_mod)
-        self._prepare_pictures_helper(self.pictures_object, self.pictures_object_mod)
-        self._prepare_pictures_helper(self.pictures_other, self.pictures_other_mod)
+        if config.config['display'].getboolean('pictures_full_screen'):
+            self._prepare_pictures_helper_fullscreen(self.pictures_action, self.pictures_action_fullscreen)
+            self._prepare_pictures_helper_fullscreen(self.pictures_object, self.pictures_object_fullscreen)
+            self._prepare_pictures_helper_fullscreen(self.pictures_other, self.pictures_other_fullscreen)
+            self._prepare_pictures_helper(self.pictures_action_fullscreen, self.pictures_action_mod)
+            self._prepare_pictures_helper(self.pictures_object_fullscreen, self.pictures_object_mod)
+            self._prepare_pictures_helper(self.pictures_other_fullscreen, self.pictures_other_mod)
+        else:
+            self._prepare_pictures_helper(self.pictures_action, self.pictures_action_mod)
+            self._prepare_pictures_helper(self.pictures_object, self.pictures_object_mod)
+            self._prepare_pictures_helper(self.pictures_other, self.pictures_other_mod)
     
+    def _prepare_pictures_helper_fullscreen(self, pictures, pictures_fullscreen):
+        for picture in pictures:
+            picture = cv.rotate(picture, cv.ROTATE_90_COUNTERCLOCKWISE)
+            x, y, _ = picture.shape
+            if x / WINDOW_X >= y / WINDOW_Y:
+                picture = cv.resize(picture, (WINDOW_X, y*WINDOW_X//WINDOW_Y, 3))
+            else:
+                picture = cv.resize(picture, (x*WINDOW_X//WINDOW_Y, WINDOW_Y, 3))
+            pictures_fullscreen.append(picture)
+        
+        
     
     def _prepare_pictures_helper(self, pictures, pictures_mod):
         for picture in pictures:
