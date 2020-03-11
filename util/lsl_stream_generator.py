@@ -71,7 +71,7 @@ class LSL_Generator():
                 while (time.time() - start_time < self.stream_time) and index < 100000:
                     if time.time() - current_time > 1/2048:
                         current_time = time.time()
-                        sample = data[index, :68]
+                        sample = data[index, :69]
                         outlet.push_sample(sample)
                         index += 1
                         if index % 100 == 0:

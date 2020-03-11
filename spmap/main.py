@@ -38,12 +38,11 @@ def start():
         spec = importlib.util.spec_from_file_location("lsl_stream_generator", lsl_stream_generator_path)
         lsl_stream_generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(lsl_stream_generator)
-        lsl_stream_debug = lsl_stream_generator.LSL_Generator(debug_time, 68, 2048, q_from_display_to_listener)
+        lsl_stream_debug = lsl_stream_generator.LSL_Generator(debug_time, 69, 2048, q_from_display_to_listener)
         lsl_stream_debug.start()
         time.sleep(1)
         
         
-
     lsl_listener = LSL_Listener(2048, q_from_display_to_listener)
     
     # Activate Display if not debugging or if debugging with stream from LSL_Generator

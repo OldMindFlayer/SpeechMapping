@@ -15,8 +15,6 @@ import config
 import random
 import math
 
-WINDOW_X = 800
-WINDOW_Y = 1280
 
 class Display:
     def __init__(self, q_from_display_to_listener):
@@ -37,17 +35,14 @@ class Display:
         self.number_of_pictures_action = self._get_number_of_pictures(pictures_action_time)
         self.number_of_pictures_object = self._get_number_of_pictures(pictures_object_time)
 
+        self.pictures_rotated = config.config['display'].getboolean('pictures_rotated')
+        self.WINDOW_X = config.config['display'].getint('WINDOW_X')
+        self.WINDOW_Y = config.config['display'].getint('WINDOW_Y')
         self.pictures_action = []
         self.pictures_object = []
         self.pictures_other = []
-        if config.config['display'].getboolean('pictures_full_screen'):
-            self.pictures_action_fullscreen = []
-            self.pictures_object_fullscreen = []
-            self.pictures_other_fullscreen = []
-        self.pictures_action_mod = []
-        self.pictures_object_mod = []
-        self.pictures_other_mod = []
-        
+        self.pictures_types = [self.pictures_action, self.pictures_object, self.pictures_other]
+
         self.img_prepare = None
         self._img_prepare()
         
@@ -77,19 +72,19 @@ class Display:
         
         # demonstrate pictures
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other_mod[1])
+        cv.imshow('display', self.pictures_other[1])
         cv.waitKey(self.time_other_pictures)
         self.q_from_display_to_listener.put(('patient_state', 2))
-        self._show_pictures(self.pictures_action_mod)
+        self._show_pictures(self.pictures_action)
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other_mod[3])
+        cv.imshow('display', self.pictures_other[3])
         cv.waitKey(self.time_other_pictures)
-        cv.imshow('display', self.pictures_other_mod[2])
+        cv.imshow('display', self.pictures_other[2])
         cv.waitKey(self.time_other_pictures)
         self.q_from_display_to_listener.put(('patient_state', 3))
-        self._show_pictures(self.pictures_object_mod)
+        self._show_pictures(self.pictures_object)
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other_mod[3])
+        cv.imshow('display', self.pictures_other[3])
         cv.waitKey(self.time_other_pictures)
 
         # wait before closure
@@ -100,9 +95,9 @@ class Display:
 
 
     def _img_prepare(self):
-        self.img_prepare = np.zeros((WINDOW_X, WINDOW_Y,3), np.uint8)
+        self.img_prepare = np.zeros((self.WINDOW_X, self.WINDOW_Y,3), np.uint8)
         cv.putText(self.img_prepare, 'Press any button...',
-                   org = (100, WINDOW_Y//2),
+                   org = (100, self.WINDOW_Y//2),
                    fontFace = cv.FONT_HERSHEY_SIMPLEX,
                    fontScale = 1,
                    color = (255,255,255),
@@ -117,9 +112,9 @@ class Display:
             time_pass = t + resting_time - time.perf_counter()
             time_to_show = time.strftime('%M:%S', time.gmtime(time_pass))
             
-            img_new = np.zeros((WINDOW_X,WINDOW_Y,3), np.uint8)
+            img_new = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
             cv.putText(img_new, time_to_show,
-                   org = (100, WINDOW_Y//2),
+                   org = (100, self.WINDOW_Y//2),
                    fontFace = cv.FONT_HERSHEY_SIMPLEX,
                    fontScale = 2,
                    color = (255,255,255),
@@ -136,11 +131,11 @@ class Display:
             if self.time_between_pictures > 0:
                 if config.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
-                    cv.imshow('display', self.pictures_other_mod[0])
+                    cv.imshow('display', self.pictures_other[0])
                     cv.waitKey(self.time_between_pictures)
                     winsound.PlaySound(None, winsound.SND_ASYNC)
                 else:
-                    cv.imshow('display', self.pictures_other_mod[0])
+                    cv.imshow('display', self.pictures_other[0])
                     cv.waitKey(self.time_between_pictures)
                     'picture_shown'
             self.q_from_display_to_listener.put(('picture_shown', True))
@@ -157,7 +152,6 @@ class Display:
             random.shuffle(pictures_names_action)
             random.shuffle(pictures_names_object)
         pictures_names_other = sorted(os.listdir(self.path_other))
-        
         if self.number_of_pictures_action == -1 or self.number_of_pictures_action > len(pictures_names_action):
             self.number_of_pictures_action = len(pictures_names_action)
         if self.number_of_pictures_object == -1 or self.number_of_pictures_object > len(pictures_names_object):
@@ -172,53 +166,49 @@ class Display:
     
     
     def _prepare_pictures(self):
-        if config.config['display'].getboolean('pictures_full_screen'):
-            self._prepare_pictures_helper_fullscreen(self.pictures_action, self.pictures_action_fullscreen)
-            self._prepare_pictures_helper_fullscreen(self.pictures_object, self.pictures_object_fullscreen)
-            self._prepare_pictures_helper_fullscreen(self.pictures_other, self.pictures_other_fullscreen)
-            self._prepare_pictures_helper(self.pictures_action_fullscreen, self.pictures_action_mod)
-            self._prepare_pictures_helper(self.pictures_object_fullscreen, self.pictures_object_mod)
-            self._prepare_pictures_helper(self.pictures_other_fullscreen, self.pictures_other_mod)
-        else:
-            self._prepare_pictures_helper(self.pictures_action, self.pictures_action_mod)
-            self._prepare_pictures_helper(self.pictures_object, self.pictures_object_mod)
-            self._prepare_pictures_helper(self.pictures_other, self.pictures_other_mod)
-    
-    def _prepare_pictures_helper_fullscreen(self, pictures, pictures_fullscreen):
-        for picture in pictures:
-            picture = cv.rotate(picture, cv.ROTATE_90_COUNTERCLOCKWISE)
+        for i in range(len(self.pictures_types)):
+            if self.pictures_rotated:
+                self._prepare_pictures_helper_rotate_and_resize(self.pictures_types[i])
+            self._prepare_pictures_helper_pad(self.pictures_types[i])
+                
+    def _prepare_pictures_helper_rotate_and_resize(self, pictures):
+        
+        for i in range(len(pictures)):
+            picture = cv.rotate(pictures[i], cv.ROTATE_90_COUNTERCLOCKWISE)
             x, y, _ = picture.shape
-            if x / WINDOW_X >= y / WINDOW_Y:
-                picture = cv.resize(picture, (WINDOW_X, y*WINDOW_X//WINDOW_Y, 3))
+            print(x, self.WINDOW_X, y, self.WINDOW_Y, x / self.WINDOW_X, y / self.WINDOW_Y)
+            if x / self.WINDOW_Y > y / self.WINDOW_X:
+                print(picture.shape)
+                picture = cv.resize(picture, (self.WINDOW_Y, y*self.WINDOW_X//self.WINDOW_Y))
+                print(picture.shape)
             else:
-                picture = cv.resize(picture, (x*WINDOW_X//WINDOW_Y, WINDOW_Y, 3))
-            pictures_fullscreen.append(picture)
+                print(picture.shape)
+                picture = cv.resize(picture, (x*self.WINDOW_Y//self.WINDOW_X, self.WINDOW_X))
+                print(picture.shape)
+            pictures[i] = picture
         
-        
-    
-    def _prepare_pictures_helper(self, pictures, pictures_mod):
-        for picture in pictures:
-            x, y, _ = picture.shape
-            if (WINDOW_X - x) < 0:
+    def _prepare_pictures_helper_pad(self, pictures):
+        for i in range(len(pictures)):
+            x, y, _ = pictures[i].shape
+            if (self.WINDOW_X - x) < 0:
                 left_pad = 0
                 right_pad = 0
-            elif (WINDOW_X - x) % 2:
-                left_pad = (WINDOW_X - x) // 2
-                right_pad = (WINDOW_X - x) // 2 + 1
+            elif (self.WINDOW_X - x) % 2:
+                left_pad = (self.WINDOW_X - x) // 2
+                right_pad = (self.WINDOW_X - x) // 2 + 1
             else: 
-                left_pad = (WINDOW_X - x) // 2
-                right_pad = (WINDOW_X - x) // 2
-            if (WINDOW_Y - y) < 0:
+                left_pad = (self.WINDOW_X - x) // 2
+                right_pad = (self.WINDOW_X - x) // 2
+            if (self.WINDOW_Y - y) < 0:
                 top_pad = 0
                 bottom_pad = 0    
-            elif (WINDOW_Y - y) % 2:
-                top_pad = (WINDOW_Y - y) // 2
-                bottom_pad = (WINDOW_Y - y) // 2 + 1
+            elif (self.WINDOW_Y - y) % 2:
+                top_pad = (self.WINDOW_Y - y) // 2
+                bottom_pad = (self.WINDOW_Y - y) // 2 + 1
             else: 
-                top_pad = (WINDOW_Y - y) // 2
-                bottom_pad = (WINDOW_Y - y) // 2
-            pictures_mod.append(np.pad(picture, ((left_pad, right_pad), 
-                                           (top_pad, bottom_pad), (0,0)), mode='constant',))
+                top_pad = (self.WINDOW_Y - y) // 2
+                bottom_pad = (self.WINDOW_Y - y) // 2
+            pictures[i] = np.pad(pictures[i], ((left_pad, right_pad), (top_pad, bottom_pad), (0,0)), mode='constant',)
 
 
     def _get_number_of_pictures(self, pictures_time):

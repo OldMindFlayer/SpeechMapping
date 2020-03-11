@@ -20,13 +20,15 @@ config['display'] = {'resting_time': '15',
       'number_of_pictures_object': '5',
       'sound_between_pictures': 'false',
       'shuffle_pictures': 'false',
-      'pictures_full_screen':'false'}
+      'pictures_rotated':'true',      
+      'WINDOW_X': '800',
+      'WINDOW_Y': '1280'}
 
 config['patient_info'] = {'patient_name': 'ABC',
       'patient_date_autogeneration': 'true',
       'patient_date': '01_01_20'}
 
-config['general'] = {'debug_mode': 'false',
+config['general'] = {'debug_mode': 'true',
       'debug_time': '60',
       'lsl_outlet_random': 'true',
       'root_path_autogeneration': 'true',
