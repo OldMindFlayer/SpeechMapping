@@ -14,9 +14,8 @@ import errno
 import sys
 import config
 
-arg = sys.argv
-path_to_experiment_data = arg[1] + '/experiment_data/experiment_data.h5'
-path_to_results = arg[1] + '/results_full/R2.png'
+path_to_experiment_data = 'C:/SpeechMapping/data/SeleznevaFull2/11_03_20/experiment_data/experiment_data.h5'
+path_to_results = 'C:/SpeechMapping/data/SeleznevaFull2/11_03_20/results_full/R2_new.png'
 
 print(path_to_experiment_data)
 
@@ -74,7 +73,7 @@ def filterEMG(MyoChunk,fmin,fmax, fs):
 
 #srate   = 2048
 #first 
-ch_idxs_ecog = range(NUM_CHANNELS)
+ch_idxs_ecog = range(6,NUM_CHANNELS+6)
 
 plt.close('all');
 

@@ -176,15 +176,15 @@ class Display:
         for i in range(len(pictures)):
             picture = cv.rotate(pictures[i], cv.ROTATE_90_COUNTERCLOCKWISE)
             x, y, _ = picture.shape
-            print(x, self.WINDOW_X, y, self.WINDOW_Y, x / self.WINDOW_X, y / self.WINDOW_Y)
+            #print(x, self.WINDOW_X, y, self.WINDOW_Y, x / self.WINDOW_X, y / self.WINDOW_Y)
             if x / self.WINDOW_Y > y / self.WINDOW_X:
-                print(picture.shape)
+                #print(picture.shape)
                 picture = cv.resize(picture, (self.WINDOW_Y, y*self.WINDOW_X//self.WINDOW_Y))
-                print(picture.shape)
+                #print(picture.shape)
             else:
-                print(picture.shape)
+                #print(picture.shape)
                 picture = cv.resize(picture, (x*self.WINDOW_Y//self.WINDOW_X, self.WINDOW_X))
-                print(picture.shape)
+                #print(picture.shape)
             pictures[i] = picture
         
     def _prepare_pictures_helper_pad(self, pictures):
