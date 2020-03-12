@@ -14,6 +14,7 @@ import winsound
 import config
 import random
 import math
+from pathlib import WindowsPath
 
 
 class Display:
@@ -110,18 +111,18 @@ class Display:
         resting_time = config.config['display'].getint('resting_time')
         while time.perf_counter() < t + resting_time:
             time_pass = t + resting_time - time.perf_counter()
-            time_to_show = time.strftime('%M:%S', time.gmtime(time_pass))
-            
+            #time_to_show = time.strftime('%M:%S', time.gmtime(time_pass))
+            print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
             img_new = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
-            cv.putText(img_new, time_to_show,
-                   org = (100, self.WINDOW_Y//2),
-                   fontFace = cv.FONT_HERSHEY_SIMPLEX,
-                   fontScale = 2,
-                   color = (255,255,255),
-                   thickness = 2,
-                   lineType = cv.LINE_AA)
+            #cv.putText(img_new, time_to_show,
+            #       org = (100, self.WINDOW_Y//2),
+            #       fontFace = cv.FONT_HERSHEY_SIMPLEX,
+            #       fontScale = 2,
+            #       color = (255,255,255),
+            #       thickness = 2,
+            #       lineType = cv.LINE_AA)
             cv.imshow('display', img_new)
-            k = cv.waitKey(50)
+            k = cv.waitKey(1000)
             if k == 27:
                 break
         
@@ -151,6 +152,26 @@ class Display:
         if config.config['display'].getboolean('shuffle_pictures'):
             random.shuffle(pictures_names_action)
             random.shuffle(pictures_names_object)
+            windows_path = WindowsPath(config.config['general']['root_path'] + '/data/')
+            if not windows_path.is_dir():
+                windows_path.mkdir()
+            windows_path = windows_path/config.config['patient_info']['patient_name']
+            if not windows_path.is_dir():
+                windows_path.mkdir()
+            windows_path = windows_path/config.config['patient_info']['patient_date']
+            if not windows_path.is_dir():
+                windows_path.mkdir()
+            
+            
+            
+            text_file1 = open(windows_path/"pictures_names_action.txt", "w") 
+            for picture_number in pictures_names_action:
+                text_file1.write(picture_number[:-4] + '\n')
+            text_file1.close()
+            text_file2 = open(windows_path/"pictures_names_object.txt", "w") 
+            for picture_number in pictures_names_object:
+                text_file2.write(picture_number[:-4] + '\n')
+            text_file2.close()
         pictures_names_other = sorted(os.listdir(self.path_other))
         if self.number_of_pictures_action == -1 or self.number_of_pictures_action > len(pictures_names_action):
             self.number_of_pictures_action = len(pictures_names_action)
@@ -172,7 +193,6 @@ class Display:
             self._prepare_pictures_helper_pad(self.pictures_types[i])
                 
     def _prepare_pictures_helper_rotate_and_resize(self, pictures):
-        
         for i in range(len(pictures)):
             picture = cv.rotate(pictures[i], cv.ROTATE_90_COUNTERCLOCKWISE)
             x, y, _ = picture.shape

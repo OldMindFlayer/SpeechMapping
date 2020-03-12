@@ -18,7 +18,7 @@ def start():
     # Queue is used to pass arguments from display thread to main thread (to LSL_Listener)
     q_from_display_to_listener = Queue()
     
-        # Path autogeneration ignores path in config and generate path based on location of 'main.py'
+    # Path autogeneration ignores path in config and generate path based on location of 'main.py'
     if config.config['general'].getboolean('root_path_autogeneration'):
         config.config['general']['root_path'] = str(Path('main.py').resolve().parents[1])
     if  config.config['patient_info'].getboolean('patient_date_autogeneration'):

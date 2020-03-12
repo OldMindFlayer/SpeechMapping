@@ -14,20 +14,30 @@ import errno
 import sys
 import config
 
-path_to_experiment_data = 'C:/SpeechMapping/data/SeleznevaFull2/11_03_20/experiment_data/experiment_data.h5'
-path_to_results = 'C:/SpeechMapping/data/SeleznevaFull2/11_03_20/results_full/R2_new.png'
+config.init()
+#arg = sys.argv
+#path_to_experiment_data = arg[1] + '/experiment_data/experiment_data.h5'
+#path_to_results = arg[1] + '/results_full/R2.png'
+path_to_experiment_data = 'C:/SpeechMapping/data/SeleznevaFull6/12_03_20/experiment_data/experiment_data.h5'
+path_to_results = 'C:/SpeechMapping/data/SeleznevaFull6/12_03_20/results_full/R2_new.png'
 
 print(path_to_experiment_data)
 
 
-GRID_X  = 4;
-GRID_Y  = 8;
+GRID_X  = config.config['processing'].getint('grid_size_x')
+GRID_Y  = config.config['processing'].getint('grid_size_y')
 NUM_CHANNELS = GRID_X*GRID_Y;
+GRID_CHANNAL_MIN = config.config['processing'].getint('grid_channel_min')
+GRID_CHANNAL_MAX = config.config['processing'].getint('grid_channel_max')
 DEC     = 3;
 TH50HZ  = 20;
 FMAX    = 120;
 FMIN    = 60;
 FSTEP   = 20;
+ecog_grid_numbers = np.arange(GRID_CHANNAL_MIN, GRID_CHANNAL_MAX+1).reshape(GRID_X, GRID_Y).T[::-1,:]
+print(ecog_grid_numbers)
+
+assert NUM_CHANNELS == (GRID_CHANNAL_MAX - GRID_CHANNAL_MIN + 1)
 
 
 def butter_bandpass(lowcut, highcut, fs, order=3):
@@ -73,8 +83,9 @@ def filterEMG(MyoChunk,fmin,fmax, fs):
 
 #srate   = 2048
 #first 
-ch_idxs_ecog = range(6,NUM_CHANNELS+6)
-
+ch_idxs_ecog = range(GRID_CHANNAL_MIN - 1, GRID_CHANNAL_MAX)
+#print(list(ch_idxs_ecog))
+#print(GRID_CHANNAL_MIN - 1, NUM_CHANNELS + GRID_CHANNAL_MAX)
 plt.close('all');
 
 
@@ -182,13 +193,19 @@ col_titles = ['rest', 'action', 'object']
 viridis_cm = plt.cm.get_cmap('viridis', 256)
 viridis_cm.set_bad('black', 1)
 
+number_locations = np.arange(GRID_CHANNAL_MAX-GRID_CHANNAL_MIN+1).reshape(GRID_X, GRID_Y).T[::-1,:]
+
 for i in range(2):
     for b in range(PAIR_R2[i].shape[1]):
         plt.subplot(3,PAIR_R2[i].shape[1],(i)*PAIR_R2[i].shape[1] + (b+1))  
         im  = (PAIR_R2[i][:,b].reshape([GRID_X,GRID_Y]).T)[::-1,:];
-        im_masked = ma.masked_array(im, PAIR_BAD_CH[i])
-        plt.imshow(im_masked, cmap = viridis_cm)
+        plt.imshow(im, cmap = viridis_cm)
+        #im_masked = ma.masked_array(im, PAIR_BAD_CH[i])
+        #plt.imshow(im_masked, cmap = viridis_cm)
         plt.colorbar();
+        for m in range(number_locations.shape[0]):
+            for n in range(number_locations.shape[1]):
+                plt.text(n, m, str(ecog_grid_numbers[m,n]), color='white', ha='center', va='center' )
         plt.title(str(fbandmins[b])+'-'+str(fbandmaxs[b])+ ' Hz');
         if b == 0:
             plt.ylabel(row_titles[i], size = 24)
