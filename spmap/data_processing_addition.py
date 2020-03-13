@@ -18,8 +18,9 @@ config.init()
 #arg = sys.argv
 #path_to_experiment_data = arg[1] + '/experiment_data/experiment_data.h5'
 #path_to_results = arg[1] + '/results_full/R2.png'
-path_to_experiment_data = 'C:/SpeechMapping/data/SeleznevaFull6/12_03_20/experiment_data/experiment_data.h5'
-path_to_results = 'C:/SpeechMapping/data/SeleznevaFull6/12_03_20/results_full/R2_new.png'
+path_big = 'C:/Workspace/SpeechMapping/data/SeleznevaFull2/11_03_20/experiment_data/'
+path_to_experiment_data = path_big + 'experiment_data_part2.h5'
+path_to_results = path_big + 'R2_new2.png'
 
 print(path_to_experiment_data)
 
@@ -206,6 +207,8 @@ for i in range(2):
         for m in range(number_locations.shape[0]):
             for n in range(number_locations.shape[1]):
                 plt.text(n, m, str(ecog_grid_numbers[m,n]), color='white', ha='center', va='center' )
+        plt.plot([0.5, 0.5], [-0.5, 1.5], color='silver', lw=2)
+        plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
         plt.title(str(fbandmins[b])+'-'+str(fbandmaxs[b])+ ' Hz');
         if b == 0:
             plt.ylabel(row_titles[i], size = 24)

@@ -205,6 +205,8 @@ for i in range(2):
         for m in range(number_locations.shape[0]):
             for n in range(number_locations.shape[1]):
                 plt.text(n, m, str(ecog_grid_numbers[m,n]), color='white', ha='center', va='center' )
+        plt.plot([0.5, 0.5], [-0.5, 1.5], color='silver', lw=2)
+        plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
         plt.title(str(fbandmins[b])+'-'+str(fbandmaxs[b])+ ' Hz');
         if b == 0:
             plt.ylabel(row_titles[i], size = 24)
