@@ -26,11 +26,14 @@ class DataProcessing():
         self.FMAX    = 120;
         self.FMIN    = 60;
         self.FSTEP   = 20;
+        self.use_interval = config['processing'].getboolean('use_interval')
+        self.INTERVAL_START = config['processing'].getfloat('interval_start')
+        self.INTERVAL_STOP  = config['processing'].getfloat('interval_stop')
         self.data_groups = ['data_rest', 'data_actions', 'data_objects']
         
         self.VALS  = [0,1,1]; 
         self.PAIRS = [(0,1),(0,2)];
-        self.ECOG, self.GRID50Hz, self.BAD_CH = [], [], []
+        self.ECOG, self.STIM, self.GRID50Hz, self.BAD_CH = [], [], [], []
         self.FEAT, self.SRATE = [], []
         self.PAIR_BAD_CH = []
         self.fbandmins = np.arange(self.FMIN, self.FMAX, self.FSTEP)
@@ -85,6 +88,7 @@ class DataProcessing():
 
     def _data_process(self):
         ch_idxs_ecog = range(self.grid_channel_from - 1, self.grid_channel_to)
+        ch_idxs_stim = -1
 
         for data_group in self.data_groups:
             print('Processing ' + data_group);
@@ -94,6 +98,7 @@ class DataProcessing():
                 self.SRATE.append(srate);
             
             ecog_data = np.copy(raw_data[:,ch_idxs_ecog])
+            stim_data = np.copy(raw_data[:,ch_idxs_stim]) 
             ecog_50hz_av = np.mean(self._filterEMG(ecog_data,48,52, srate), axis = 0)
             grid_50hz_av = (ecog_50hz_av.reshape([self.GRID_X,self.GRID_Y]).T)[::-1,:];
             self.GRID50Hz.append(grid_50hz_av);
@@ -108,6 +113,7 @@ class DataProcessing():
                 for freq in np.arange(50,200,50):
                     ecog_data[:,i] = self._butter_bandstop_filter(ecog_data[:,i], freq-2, freq+2, srate, 4)
             self.ECOG.append(ecog_data);
+            self.STIM.append(stim_data);
 
         assert np.unique(self.SRATE).shape[0]==1, 'Sampling rates should be the same'
         
@@ -131,27 +137,100 @@ class DataProcessing():
             res_r2 = np.zeros((self.ECOG[i].shape[1],len(self.fbandmins)))
             res_p = np.ones((self.ECOG[i].shape[1],len(self.fbandmins)))
             
-            for ch in range(self.ECOG[i].shape[1]):
-                if (self.BAD_CH[i][ch] | self.BAD_CH[j][ch]):
-                    res_r2[ch,:] = 0
-                    res_p[ch,:]  = 1
-                else:
-                    ecog_i = np.zeros((self.ECOG[i].shape[0],1));
-                    ecog_i[:,0] = np.copy(self.ECOG[i][:,ch]);
-                    ecog_j = np.zeros((self.ECOG[j].shape[0],1));
-                    ecog_j[:,0] = np.copy(self.ECOG[j][:,ch]);
-                    ecog_concat = np.vstack((ecog_i,ecog_j));
-                    for f in range(len(self.fbandmins)):
-                        fbandmin = self.fbandmins[f]
-                        fbandmax = self.fbandmaxs[f]
-                        x = self._filterEMG(ecog_concat, fbandmin, fbandmax, self.SRATE[0])[::self.DEC]
-                        scaler = MinMaxScaler([-1, 1])
-                        scaler.fit(x)
-                        x = scaler.transform(x)    
-                        slope, intercept, r_value_1, p_value, std_err = stats.linregress(x[:,0], y[:,0]);
-                        res_r2[ch,f] = r_value_1**2 if r_value_1 >0 else 0;
-                        res_p[ch,f]  = p_value;
+
+            if not self.use_interval:
+                for ch in range(self.ECOG[i].shape[1]):
+                    if (self.BAD_CH[i][ch] | self.BAD_CH[j][ch]):
+                        res_r2[ch,:] = 0
+                        res_p[ch,:]  = 1
+                    else:
+                        ecog_i = np.zeros((self.ECOG[i].shape[0],1));
+                        ecog_i[:,0] = np.copy(self.ECOG[i][:,ch]);
+                        ecog_j = np.zeros((self.ECOG[j].shape[0],1));
+                        ecog_j[:,0] = np.copy(self.ECOG[j][:,ch]);
+                        ecog_concat = np.vstack((ecog_i,ecog_j));
+                        for f in range(len(self.fbandmins)):
+                            fbandmin = self.fbandmins[f]
+                            fbandmax = self.fbandmaxs[f]
+                            x = self._filterEMG(ecog_concat, fbandmin, fbandmax, self.SRATE[0])[::self.DEC]
+                            scaler = MinMaxScaler([-1, 1])
+                            scaler.fit(x)
+                            x = scaler.transform(x)    
+                            slope, intercept, r_value_1, p_value, std_err = stats.linregress(x[:,0], y[:,0]);
+                            res_r2[ch,f] = r_value_1**2 if r_value_1 >0 else 0;
+                            res_p[ch,f]  = p_value;
+            
+            #----#
+            else:
+                for ch in range(self.ECOG[i].shape[1]):
+                    if( self.BAD_CH[i][ch] | self.BAD_CH[j][ch] ):
+                        res_r2[ch,:] = 0;
+                        res_p[ch,:]  = 1;
+                    else:
+                        ecog_i = np.zeros((self.ECOG[i].shape[0],1));
+                        ecog_i[:,0] = np.copy(self.ECOG[i][:,ch]);
+                        ecog_j = np.zeros((self.ECOG[j].shape[0],1));
+                        ecog_j[:,0] = np.copy(self.ECOG[j][:,ch]);
+                        stim_i = np.zeros((self.STIM[i].shape[0],1));
+                        stim_j = np.zeros((self.STIM[j].shape[0],1));
+                        stim_i[:,0]      = np.copy(self.STIM[i]); 
+                        stim_j[:,0]      = np.copy(self.STIM[j]); 
+                        
+                        ecog_concat = np.vstack((ecog_i,ecog_j));
+                        #stim_concat = np.vstack((stim_i,stim_j));
+                        
+                        ind_stim_i = np.argwhere(stim_i[:,0]==1)[:,0];
+                        ind_stim_j = np.argwhere(stim_j[:,0]==1)[:,0];
+                        
+                        # find indices around stimulus onset
+                        if( (ind_stim_i.shape[0]==0) & (ind_stim_j.shape[0]==0)):
+                            ind = range(0,ecog_concat.shape[0]);
+                        elif((ind_stim_i.shape[0]==0) & (ind_stim_j.shape[0]!=0)):
+                            indj = np.zeros(0);
+                            for k  in ind_stim_j:
+                                indj = np.append(indj, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
+                            indi = np.array(range(0,min(ecog_i.shape[0],indj.shape[0])));
+                        elif((ind_stim_i.shape[0]!=0) & (ind_stim_j.shape[0]==0)):      
+                            indi = np.zeros(0);
+                            for k  in ind_stim_i:
+                                indi = np.append(indi, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0] ))));
+                            indj = np.array(range(0,min(ecog_j.shape[0],indi.shape[0])));
+                        else:
+                            indj = np.zeros(0);
+                            for k  in ind_stim_j:
+                                indj = np.append(indj, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
+                            indi = np.zeros(0);
+                            for k  in ind_stim_i:
+                                indi = np.append(indi, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
+                           
+                            indj = np.array(range(0,min(ecog_j.shape[0],indi.shape[0])));
+                
+                        # cast as it
+                        indi  = indi.astype(int);
+                        indj = indj.astype(int);
+                   
         
+                        for f in range(len(self.fbandmins)):
+                            fbandmin = self.fbandmins[f]
+                            fbandmax = self.fbandmaxs[f]
+                            
+                            xi = self._filterEMG(ecog_i,fbandmin,fbandmax,self.SRATE[0])[indi]
+                            xj = self._filterEMG(ecog_j,fbandmin,fbandmax,self.SRATE[0])[indj]
+                            x = np.vstack((xi,xj));
+                           
+                            y = np.vstack((np.ones((xi.shape[0],1))*self.VALS[i],
+                               np.ones((xj.shape[0],1))*self.VALS[j]));
+                
+                            
+                            scaler = MinMaxScaler([-1, 1])
+                            scaler.fit(x)
+                            x = scaler.transform(x)    
+                            slope, intercept, r_value_1, p_value, std_err = stats.linregress(x[:,0], y[:,0]);
+                            res_r2[ch,f] = r_value_1**2 if r_value_1 >0 else 0;
+                            res_p[ch,f]  = p_value;
+            #---#
+
+
             self.PAIR_P.append(res_p);
             self.PAIR_R2.append(res_r2);
 

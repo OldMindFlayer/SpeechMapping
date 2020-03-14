@@ -46,7 +46,10 @@ config['general'] = {'debug_mode': 'true',
 config['processing'] = {'grid_size_X': '4',
       'grid_size_Y': '8',
       'grid_channel_from': '1',
-      'grid_channel_to': '32'}
+      'grid_channel_to': '32',
+      'use_interval': 'false',
+      'interval_start': '0',
+      'interval_stop': '1.5'}
 
 path = Path('write_config.py').resolve().parents[1]/'spmap'/'config.ini'
 with open(path, 'w') as configfile:
