@@ -11,7 +11,6 @@ import random
 import time
 from threading import Thread
 import h5py
-import config
 
 
 class LSL_Generator():
@@ -21,11 +20,8 @@ class LSL_Generator():
         self.seconnds_per_sample = 1 / self.nominal_srate
         self.stream_time = stream_time
         self.q_from_display_to_listener = q_from_display_to_listener
-        if config.config['general'].getboolean('lsl_outlet_random'):
-            self.thread = Thread(target=self._stream, args=())
-        else:
-            self.stream_time = 30000
-            self.thread = Thread(target=self._stream_debug, args=())
+        self.thread = Thread(target=self._stream, args=())
+        
         
     def start(self):
         self.thread.start()

@@ -7,10 +7,10 @@ Created on Wed Mar  4 09:37:29 2020
 
 import configparser
 
-def init():
-    global config
+def config_init():
     config = configparser.ConfigParser()
     config.read('config.ini')
+    return config
 
 if __name__ == '__main__':
-    init()
+    config_init()

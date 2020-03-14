@@ -11,44 +11,53 @@ import cv2 as cv
 from threading import Thread
 import time
 import winsound
-import config
 import random
 import math
-from pathlib import WindowsPath
 
 
 class Display:
-    def __init__(self, q_from_display_to_listener):
-        self.path_action = config.config['general']['root_path'] + '/resources/pictures_action/'
-        self.path_object = config.config['general']['root_path'] + '/resources/pictures_object/'
-        self.path_other = config.config['general']['root_path'] + '/resources/pictures_other/'
-        self.path_sound = config.config['general']['root_path'] + '/resources/sounds/tone.wav'
+    def __init__(self, config, q_from_display_to_listener):
+        self.config = config
         
+        # initialise paths to resources
+        self.path_action = self.config['general']['root_path'] + '/resources/pictures_action/'
+        self.path_object = self.config['general']['root_path'] + '/resources/pictures_object/'
+        self.path_other = self.config['general']['root_path'] + '/resources/pictures_other/'
+        self.path_sound = self.config['general']['root_path'] + '/resources/sounds/tone.wav'
+        
+        # command to LSL listener to start listen the stream
         self.q_from_display_to_listener = q_from_display_to_listener
         self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))
         
-        self.single_picture_time = int(config.config['display'].getfloat('single_picture_time')*1000)
-        self.time_between_pictures = int(config.config['display'].getfloat('time_between_pictures')*1000)
-        self.time_other_pictures = int(config.config['display'].getfloat('time_other_pictures')*1000)
+        # initialise amount of time EACH picture will be shown
+        self.single_picture_time = int(self.config['display'].getfloat('single_picture_time')*1000)
+        self.time_between_pictures = int(self.config['display'].getfloat('time_between_pictures')*1000)
+        self.time_other_pictures = int(self.config['display'].getfloat('time_other_pictures')*1000)
         
-        pictures_action_time = config.config['display'].getint('pictures_action_time')
-        pictures_object_time = config.config['display'].getint('pictures_object_time')
+        # initialise amount of time ALL pictures will be shown
+        pictures_action_time = self.config['display'].getint('pictures_action_time')
+        pictures_object_time = self.config['display'].getint('pictures_object_time')
         self.number_of_pictures_action = self._get_number_of_pictures(pictures_action_time)
         self.number_of_pictures_object = self._get_number_of_pictures(pictures_object_time)
 
-        self.pictures_rotated = config.config['display'].getboolean('pictures_rotated')
-        self.WINDOW_X = config.config['display'].getint('WINDOW_X')
-        self.WINDOW_Y = config.config['display'].getint('WINDOW_Y')
+        # initialise configuration of display
+        self.pictures_rotated = self.config['display'].getboolean('pictures_rotated')
+        self.WINDOW_X = self.config['display'].getint('WINDOW_X')
+        self.WINDOW_Y = self.config['display'].getint('WINDOW_Y')
         self.pictures_action = []
         self.pictures_object = []
         self.pictures_other = []
         self.pictures_types = [self.pictures_action, self.pictures_object, self.pictures_other]
 
+        # make image with message 'Press any button...'
         self.img_prepare = None
         self._img_prepare()
         
+        # process the pictures
         self._load_pictures()
         self._prepare_pictures()
+        
+        # initialise thread for display
         self.thread = Thread(target=self._update, args=())
         
         
@@ -58,14 +67,14 @@ class Display:
             
         
     def _update(self):
+        # command to LSL listener
         self.q_from_display_to_listener.put(('patient_state', 0))
         
         # prepare window for patient
         cv.namedWindow('display', cv.WINDOW_NORMAL)
         cv.imshow('display', self.img_prepare)
         cv.waitKey(0)
-        cv.setWindowProperty('display', cv.WND_PROP_FULLSCREEN,
-                             cv.WINDOW_FULLSCREEN)
+        cv.setWindowProperty('display', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
         
         # show time to rest
         self.q_from_display_to_listener.put(('patient_state', 1))
@@ -108,29 +117,22 @@ class Display:
         
     def _start_clock(self):
         t = time.perf_counter()
-        resting_time = config.config['display'].getint('resting_time')
+        resting_time = self.config['display'].getint('resting_time')
+        img = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
         while time.perf_counter() < t + resting_time:
             time_pass = t + resting_time - time.perf_counter()
-            #time_to_show = time.strftime('%M:%S', time.gmtime(time_pass))
-            print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
-            img_new = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
-            #cv.putText(img_new, time_to_show,
-            #       org = (100, self.WINDOW_Y//2),
-            #       fontFace = cv.FONT_HERSHEY_SIMPLEX,
-            #       fontScale = 2,
-            #       color = (255,255,255),
-            #       thickness = 2,
-            #       lineType = cv.LINE_AA)
-            cv.imshow('display', img_new)
+            if int(time_pass) % 5 == 0:
+                print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
+            cv.imshow('display', img)
             k = cv.waitKey(1000)
             if k == 27:
                 break
         
-        
+    # show pictures        
     def _show_pictures(self, pictures):
         for picture in pictures:
             if self.time_between_pictures > 0:
-                if config.config['display'].getboolean('sound_between_pictures'):
+                if self.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
                     cv.imshow('display', self.pictures_other[0])
                     cv.waitKey(self.time_between_pictures)
@@ -138,7 +140,6 @@ class Display:
                 else:
                     cv.imshow('display', self.pictures_other[0])
                     cv.waitKey(self.time_between_pictures)
-                    'picture_shown'
             self.q_from_display_to_listener.put(('picture_shown', True))
             cv.imshow('display', picture)
             k = cv.waitKey(self.single_picture_time)
@@ -147,37 +148,31 @@ class Display:
         
     
     def _load_pictures(self):
+        
+        # create lists of names of picturs
         pictures_names_action = sorted(os.listdir(self.path_action))
         pictures_names_object = sorted(os.listdir(self.path_object))
-        if config.config['display'].getboolean('shuffle_pictures'):
+        pictures_names_other = sorted(os.listdir(self.path_other))
+        if self.config['display'].getboolean('shuffle_pictures'):
             random.shuffle(pictures_names_action)
             random.shuffle(pictures_names_object)
-            windows_path = WindowsPath(config.config['general']['root_path'] + '/data/')
-            if not windows_path.is_dir():
-                windows_path.mkdir()
-            windows_path = windows_path/config.config['patient_info']['patient_name']
-            if not windows_path.is_dir():
-                windows_path.mkdir()
-            windows_path = windows_path/config.config['patient_info']['patient_date']
-            if not windows_path.is_dir():
-                windows_path.mkdir()
+
+#            text_file1 = open(windows_path/"pictures_names_action.txt", "w") 
+#            for picture_number in pictures_names_action:
+#                text_file1.write(picture_number[:-4] + '\n')
+#            text_file1.close()
+#            text_file2 = open(windows_path/"pictures_names_object.txt", "w") 
+#            for picture_number in pictures_names_object:
+#                text_file2.write(picture_number[:-4] + '\n')
+#            text_file2.close()
             
-            
-            
-            text_file1 = open(windows_path/"pictures_names_action.txt", "w") 
-            for picture_number in pictures_names_action:
-                text_file1.write(picture_number[:-4] + '\n')
-            text_file1.close()
-            text_file2 = open(windows_path/"pictures_names_object.txt", "w") 
-            for picture_number in pictures_names_object:
-                text_file2.write(picture_number[:-4] + '\n')
-            text_file2.close()
-        pictures_names_other = sorted(os.listdir(self.path_other))
+        # decide on number of pictures to show
         if self.number_of_pictures_action == -1 or self.number_of_pictures_action > len(pictures_names_action):
             self.number_of_pictures_action = len(pictures_names_action)
         if self.number_of_pictures_object == -1 or self.number_of_pictures_object > len(pictures_names_object):
             self.number_of_pictures_object = len(pictures_names_object)
-
+        
+        # read pictures into memory
         for i in range(self.number_of_pictures_action):
             self.pictures_action.append(cv.imread(self.path_action + pictures_names_action[i]))
         for i in range(self.number_of_pictures_object):
@@ -196,15 +191,10 @@ class Display:
         for i in range(len(pictures)):
             picture = cv.rotate(pictures[i], cv.ROTATE_90_COUNTERCLOCKWISE)
             x, y, _ = picture.shape
-            #print(x, self.WINDOW_X, y, self.WINDOW_Y, x / self.WINDOW_X, y / self.WINDOW_Y)
             if x / self.WINDOW_Y > y / self.WINDOW_X:
-                #print(picture.shape)
                 picture = cv.resize(picture, (self.WINDOW_Y, y*self.WINDOW_X//self.WINDOW_Y))
-                #print(picture.shape)
             else:
-                #print(picture.shape)
                 picture = cv.resize(picture, (x*self.WINDOW_Y//self.WINDOW_X, self.WINDOW_X))
-                #print(picture.shape)
             pictures[i] = picture
         
     def _prepare_pictures_helper_pad(self, pictures):
@@ -235,18 +225,10 @@ class Display:
         if pictures_time == -1:
             number_of_pictures = -1
         else:
-            number_of_pictures = math.ceil(pictures_time / 
-                                           (self.single_picture_time/1000 + self.time_between_pictures/1000))
+            number_of_pictures = math.ceil(pictures_time / (self.single_picture_time/1000 + self.time_between_pictures/1000))
         return number_of_pictures
         
 
 
 if __name__ == '__main__':
-    config.init()
-    display = Display()
-    display.start()
-    
-    for i in range(20):
-        print ('Time:', 1, ' State:', config.patient_state)
-        time.sleep(1)
-
+    pass

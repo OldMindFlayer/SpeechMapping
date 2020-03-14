@@ -5,47 +5,29 @@ Created on Fri Feb 28 08:23:22 2020
 @author: dblok
 """
 
-from pathlib import WindowsPath
+from pathlib import Path
 import numpy as np
 import h5py
 import config
 
 
 class SavePatientData():
-    def __init__(self, fs):
-        self.dir_subject = config.config['general']['root_path'] + '/data/'
-        self.fs = fs
+    def __init__(self, fs, patient_experiment_data_path):
         
-        windows_path = WindowsPath(self.dir_subject)
-        if not windows_path.is_dir():
-            windows_path.mkdir()
+        # create Path to experiment_data file       
+        self.experiment_data_path = Path(patient_experiment_data_path)
+        self.path_h5file = self.experiment_data_path/"experiment_data.h5"
         
-        windows_path = windows_path/config.config['patient_info']['patient_name']
-        if not windows_path.is_dir():
-            windows_path.mkdir()
-        
-        windows_path = windows_path/config.config['patient_info']['patient_date']
-        if not windows_path.is_dir():
-            windows_path.mkdir()
-        
-        if not (windows_path/'results_full').is_dir():
-            (windows_path/'results_full').mkdir()
-        
-        windows_path = windows_path/'experiment_data'
-        if not (windows_path).is_dir():
-            (windows_path).mkdir()
-            
-        
+        # create h5 experiment_data file with empty groups of nonfixed length and group with fs
         self.groups = ['data_rest', 'data_actions', 'data_objects']
-        self.path_h5file = windows_path/"experiment_data.h5"
         if not self.path_h5file.is_file():
             with h5py.File(self.path_h5file, 'a') as file:
                 file.create_dataset(self.groups[0] + '/raw_data', (0, 72), maxshape=(None, 72))
                 file.create_dataset(self.groups[1] + '/raw_data', (0, 72), maxshape=(None, 72))
                 file.create_dataset(self.groups[2] + '/raw_data', (0, 72), maxshape=(None, 72))
-                file.create_dataset('fs', data=np.array(self.fs))
+                file.create_dataset('fs', data=np.array(fs))
 
-
+    # public methods for saving data
     def save_data_rest(self, data):
         self._save_data_buffer(data, 'data_rest')
 
@@ -55,14 +37,14 @@ class SavePatientData():
     def save_data_objects(self, data):
         self._save_data_buffer(data, 'data_objects')
     
-
+    # save chunk of data into new raw_data# dataset
     def _save_data_buffer(self, data, data_type):
         with h5py.File(self.path_h5file, "a") as file:
             keys = file[data_type].keys()
             dataset_name = '{}/raw_data{}'.format(data_type, len(keys))
             file.create_dataset(dataset_name, shape=data.shape, data=data)
             
-                    
+    # after saving into file with raw_data# chunks remake into single raw_data
     def reforge_into_raw_data(self):
         with h5py.File(self.path_h5file, "a") as file:
             for group in self.groups:

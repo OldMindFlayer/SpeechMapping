@@ -8,24 +8,28 @@ Created on Sat Feb 29 13:31:28 2020
 from pylsl import StreamInlet, resolve_stream
 import numpy as np
 import time
-import h5py
-from queue import Queue
 from data_saving import SavePatientData
-import config
 
 
 class LSL_Listener():
-    def __init__(self, maxbuffer_size, q_from_display_to_listener = None):
-        self.maxbuffer_size = maxbuffer_size
-        self.saver = None
+    def __init__(self, config, maxbuffer_size, q_from_display_to_listener = None):
         
+        # initialize basic configuration
+        # 0 - none (not recording)
+        # 1 - rest
+        # 2 - actions
+        # 3 - objects
+        self.config = config
+        self.maxbuffer_size = maxbuffer_size
+        self.saver = SavePatientData(self.config['general'].getint('fs'), self.config['patient_info']['patient_experiment_data_path'])
         self.q_from_display_to_listener = q_from_display_to_listener
         self.lsl_stream_listener_state = False
         self.patient_state = 0
         self.picture_shown = False
         
-        if config.config['general'].getboolean('save_through_buffer'):
-            self.buffer_size = int(config.config['general'].getfloat('buffer_size_sec')*config.config['general'].getint('fs'))
+        # initialize configuration based on saving method (though buffer or without it)
+        if self.config['general'].getboolean('save_through_buffer'):
+            self.buffer_size = int(self.config['general'].getfloat('buffer_size_sec')*self.config['general'].getint('fs'))
             self.buffer = []
             self.buffer_length = 0
         else:
@@ -35,31 +39,46 @@ class LSL_Listener():
             self.memory_objects = []
             self.memory = [self.memory_none, self.memory_rest, self.memory_actions, self.memory_objects]
         
-        if config.config['general'].getboolean('debug_mode'):
+        # resolve lsl stream
+        if self.config['general'].getboolean('debug_mode'):
             print('LSL_Listener: Debug mode')
             streams = resolve_stream('name', 'Debug')
             print('LSL_Listener: number of streams: ', len(streams), '  Stream: ', streams[0])
             self.ecogInlet = StreamInlet(streams[0], self.maxbuffer_size)
+            print("LSL_Listener: Stream resolved, {}".format(str(streams[0])))
         else:
-            streams = resolve_stream('name', config.config['general']['lsl_stream_name'])
+            streams = resolve_stream('name', self.config['general']['lsl_stream_name'])
             self.ecogInlet = StreamInlet(streams[0], self.maxbuffer_size)
-        print("LSL_Listener: Stream resolved")
+            print("LSL_Listener: Stream resolved, {}".format(self.config['general']['lsl_stream_name']))
+        
+        # check, is stram working
+        sample, timestamp = self.ecogInlet.pull_sample(timeout=0.0)
+        if not timestamp:
+            print('LSL Listener: Empty timestap from stream, check the stream generator')
+
 
 
     def record_using_buffer(self):
         print('LSL_Listener: recording with buffer')
+        
+        # pre-loop preparation
         current_patient_state = self.patient_state
-        self.saver = SavePatientData(2048)
         self._resolve_q()
 
+        # active while command from display say so
         while self.lsl_stream_listener_state:
             self._resolve_q()
+            
+            # take single sample from stream
             sample, timestamp = self.ecogInlet.pull_sample(timeout=0.0)
             sample = np.asarray(sample)
             
+            # if patient_state changes - save buffer before continue with new data
             if (self.patient_state != current_patient_state) and self.buffer_length > 0:
                 self._save_buffer(current_patient_state)
                 current_patient_state = self.patient_state
+                
+            # if timestamp exists, concatenate sample of stream data with patient data and put into buffer
             if timestamp:
                 sample = np.reshape(sample, (1, 69))
                 timestamp = np.array([[timestamp]])
@@ -70,24 +89,26 @@ class LSL_Listener():
                 else:
                     picture_shown = np.array([[0]])        
                 big_sample = np.concatenate((sample, timestamp, picture_type_array, picture_shown), axis=1)
-                
                 self.buffer.append(big_sample)
                 self.buffer_length += big_sample.shape[0]
+                # if buffer is too big, save it
                 if self.buffer_length >= self.buffer_size:
                     self._save_buffer(self.patient_state)
+        
+        # if there is any data still in the buffer, save it before the end
         if self.buffer_length > 0:
             self._save_buffer(self.patient_state)
-
         print('LSL_Listener: Stop listening...')
+        
+        # how long it takes to reforge h5 file
         t1 = time.time()
         self.saver.reforge_into_raw_data()
         t2 = time.time()
         print('Time to save: ', t2-t1)
    
-     
+    # not used
     def record_using_memory(self):
         print('LSL_Listener: recording with memory')
-        self.saver = SavePatientData(2048)
         self._resolve_q()
 
         while self.lsl_stream_listener_state:
@@ -113,7 +134,7 @@ class LSL_Listener():
         t2 = time.time()
         print('Saving time: ', t2-t1)
 
-
+    # save data buffer based on current patient state
     def _save_buffer(self, patient_state):
         npbuffer = np.vstack(self.buffer)
         if (patient_state == 0):
@@ -129,7 +150,7 @@ class LSL_Listener():
         self.buffer = []
         self.buffer_length = 0
 
-
+    # not used
     def _save_memory(self):
         for i in range(1,len(self.memory)):
             if len(self.memory[i]) > 0:
@@ -142,11 +163,12 @@ class LSL_Listener():
                     self.saver.save_data_objects(npmemory)
                 self.memory[i] = []
                 
-                
+
+    # resolve commands from Display object to navigate recording of data
     def _resolve_q(self):
         while not self.q_from_display_to_listener.empty():
             key, value = self.q_from_display_to_listener.get()
-            if config.config['general'].getboolean('debug_mode'):
+            if self.config['general'].getboolean('debug_mode'):
                 print(key, value)
             if key == 'patient_state':
                 self.patient_state = value
