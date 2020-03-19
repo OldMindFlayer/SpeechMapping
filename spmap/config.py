@@ -42,6 +42,7 @@ def config_init(argv):
     patient_data_path = root_path/'SpeechMappingData'/(patient_date + '_' + patient_name)/(patient_time + '_experiment')
     experiment_data_path = patient_data_path/'experiment_data.h5'
     results_path = patient_data_path/'results'
+    resource_path = root_path/'SpeechMapping/resources/'
     
     # create directories
     makedirs(results_path, exist_ok=True)
@@ -50,12 +51,14 @@ def config_init(argv):
     config['paths']['patient_data_path'] = str(patient_data_path)
     config['paths']['experiment_data_path'] = str(experiment_data_path)
     config['paths']['results_path'] = str(results_path)
+    config['paths']['pictures_actions_path'] = str(resource_path/'pictures_action/')
+    config['paths']['pictures_object_path'] = str(resource_path/'pictures_object/')
+    config['paths']['pictures_others_path'] = str(resource_path/'pictures_other/')
+    config['paths']['tone_path'] = str(resource_path/'sounds/tone.wav')
     if config['general'].getboolean('debug_mode'):
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
     
-    
-    
-    
+
     
     for i in range(config['processing'].getint('grid_channel_from'), config['processing'].getint('grid_channel_to') + 1):
         config['channels']['{}'.format(i)] = str(i - config['processing'].getint('grid_channel_from') + 1)

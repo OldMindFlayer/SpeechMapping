@@ -18,13 +18,12 @@ import math
 class Display:
     def __init__(self, config, q_from_display_to_listener):
         self.config = config
-        
-        #!!! remake!!!!
-        # initialise paths to resources
-        self.path_action = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_action/'
-        self.path_object = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_object/'
-        self.path_other = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_other/'
-        self.path_sound = self.config['paths']['root_path'] + '/SpeechMapping/resources/sounds/tone.wav'
+
+        # get paths to resources
+        self.path_action = self.config['paths']['pictures_actions_path']
+        self.path_object = self.config['paths']['pictures_object_path']
+        self.path_other = self.config['paths']['pictures_others_path']
+        self.path_sound = self.config['paths']['tone_path']
         
         # command to LSL listener to start listen the stream
         self.q_from_display_to_listener = q_from_display_to_listener
@@ -35,12 +34,6 @@ class Display:
         self.time_between_pictures = int(self.config['display'].getfloat('time_between_pictures')*1000)
         self.time_other_pictures = int(self.config['display'].getfloat('time_other_pictures')*1000)
         
-        # initialise amount of time ALL pictures will be shown
-        pictures_action_time = self.config['display'].getint('pictures_action_time')
-        pictures_object_time = self.config['display'].getint('pictures_object_time')
-        self.number_of_pictures_action = self._get_number_of_pictures(pictures_action_time)
-        self.number_of_pictures_object = self._get_number_of_pictures(pictures_object_time)
-
         # initialise configuration of display
         self.pictures_rotated = self.config['display'].getboolean('pictures_rotated')
         self.WINDOW_X = self.config['display'].getint('WINDOW_X')
@@ -129,6 +122,7 @@ class Display:
             if k == 27:
                 break
         
+        
     # show pictures        
     def _show_pictures(self, pictures):
         for picture in pictures:
@@ -151,43 +145,60 @@ class Display:
     def _load_pictures(self):
         
         # create lists of names of picturs
-        pictures_names_action = sorted(os.listdir(self.path_action))
-        pictures_names_object = sorted(os.listdir(self.path_object))
         pictures_names_other = sorted(os.listdir(self.path_other))
+        pictures_names_actions = []
+        for picture_name in sorted(os.listdir(self.path_action)):
+            if self.config['actions'].getboolean(picture_name[:-4]):
+                pictures_names_actions.append(picture_name)
+        pictures_names_objects = []
+        for picture_name in sorted(os.listdir(self.path_object)):
+            if self.config['objects'].getboolean(picture_name[:-4]):
+                pictures_names_objects.append(picture_name)
+                
         if self.config['display'].getboolean('shuffle_pictures'):
-            random.shuffle(pictures_names_action)
-            random.shuffle(pictures_names_object)
+            random.shuffle(pictures_names_actions)
+            random.shuffle(pictures_names_objects)
 
-#            text_file1 = open(windows_path/"pictures_names_action.txt", "w") 
-#            for picture_number in pictures_names_action:
-#                text_file1.write(picture_number[:-4] + '\n')
-#            text_file1.close()
-#            text_file2 = open(windows_path/"pictures_names_object.txt", "w") 
-#            for picture_number in pictures_names_object:
-#                text_file2.write(picture_number[:-4] + '\n')
-#            text_file2.close()
-            
+
+        # initialise amount of time ALL pictures will be shown
+        pictures_action_time = self.config['display'].getint('pictures_action_time')
+        pictures_object_time = self.config['display'].getint('pictures_object_time')
+        number_of_pictures_actions = self._get_number_of_pictures(pictures_action_time)
+        number_of_pictures_objects = self._get_number_of_pictures(pictures_object_time)
+
+
         # decide on number of pictures to show
-        if self.number_of_pictures_action == -1 or self.number_of_pictures_action > len(pictures_names_action):
-            self.number_of_pictures_action = len(pictures_names_action)
-        if self.number_of_pictures_object == -1 or self.number_of_pictures_object > len(pictures_names_object):
-            self.number_of_pictures_object = len(pictures_names_object)
+        if number_of_pictures_actions == -1 or number_of_pictures_actions > len(pictures_names_actions):
+            number_of_pictures_actions = len(pictures_names_actions)
+        if number_of_pictures_objects == -1 or number_of_pictures_objects > len(pictures_names_objects):
+            number_of_pictures_objects = len(pictures_names_objects)
+
+        name_file_actions = open(self.config['paths']['patient_data_path'] + "/pictures_names_actions.txt", "w") 
+        for picture_number in sorted(pictures_names_actions[:number_of_pictures_actions], key=lambda x: int(x[:-4])):
+            name_file_actions.write(picture_number[:-4] + '\n')
+        name_file_actions.close()
+        name_file_objects = open(self.config['paths']['patient_data_path'] + "/pictures_names_objects.txt", "w") 
+        for picture_number in sorted(pictures_names_objects[:number_of_pictures_objects], key=lambda x: int(x[:-4])):
+            name_file_objects.write(picture_number[:-4] + '\n')
+        name_file_objects.close()
+            
         
         # read pictures into memory
-        for i in range(self.number_of_pictures_action):
-            self.pictures_action.append(cv.imread(self.path_action + pictures_names_action[i]))
-        for i in range(self.number_of_pictures_object):
-            self.pictures_object.append(cv.imread(self.path_object + pictures_names_object[i]))
+        for i in range(number_of_pictures_actions):
+            self.pictures_action.append(cv.imread(self.path_action + '/' + pictures_names_actions[i]))
+        for i in range(number_of_pictures_objects):
+            self.pictures_object.append(cv.imread(self.path_object + '/' + pictures_names_objects[i]))
         for i in range(len(pictures_names_other)):
-            self.pictures_other.append(cv.imread(self.path_other + pictures_names_other[i]))
-    
-    
+            self.pictures_other.append(cv.imread(self.path_other + '/' + pictures_names_other[i]))
+
+
     def _prepare_pictures(self):
         for i in range(len(self.pictures_types)):
             if self.pictures_rotated:
                 self._prepare_pictures_helper_rotate_and_resize(self.pictures_types[i])
             self._prepare_pictures_helper_pad(self.pictures_types[i])
-                
+ 
+
     def _prepare_pictures_helper_rotate_and_resize(self, pictures):
         for i in range(len(pictures)):
             picture = cv.rotate(pictures[i], cv.ROTATE_90_COUNTERCLOCKWISE)
@@ -197,7 +208,8 @@ class Display:
             else:
                 picture = cv.resize(picture, (x*self.WINDOW_Y//self.WINDOW_X, self.WINDOW_X))
             pictures[i] = picture
-        
+
+
     def _prepare_pictures_helper_pad(self, pictures):
         for i in range(len(pictures)):
             x, y, _ = pictures[i].shape
