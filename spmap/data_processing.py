@@ -304,8 +304,7 @@ class DataProcessing():
 if __name__ == '__main__':
     import configparser
     config = configparser.ConfigParser()
-    path = Path('custom_config.ini')
-    config.read(path)
+    config.read(Path('display.py').resolve().parents[1]/'util/custom_config_processing.ini')
     dp = DataProcessing(config)
     dp.calculate()
     dp.plot_results()

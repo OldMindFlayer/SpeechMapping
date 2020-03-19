@@ -14,10 +14,26 @@ def config_init(argv):
     config = configparser.ConfigParser()
     config.read('config.ini')
     
-    if len(argv) > 1 and argv[1] == '-debug':
-        config['general']['debug_mode'] = 'true'
-    else:
-        config['general']['debug_mode'] = 'false'
+    # handle arguments 
+    if len(argv) > 1:
+        if '-debug' in argv:
+            config['general']['debug_mode'] = 'true'
+        else:
+            config['general']['debug_mode'] = 'false'
+        if '-remove' in argv:
+            config['general']['remove_procedure'] = 'true'
+        else:
+            config['general']['remove_procedure'] = 'false'
+    
+    if config['general'].getboolean('remove_procedure'):
+        config['display']['resting_time'] = '0'
+        config['display']['pictures_actions_time'] = '10000'
+        config['display']['pictures_objects_time'] = '10000'
+        config['display']['time_between_pictures'] = '2'
+        config['display']['shuffle_pictures'] = 'false'
+    
+    
+    
     
     # Path autogeneration ignores path in config and generate path based on location of 'main.py'
     if config['general'].getboolean('root_path_autogeneration'):
@@ -39,7 +55,8 @@ def config_init(argv):
     patient_time = config['patient_info']['patient_time']
     
     # create Path objects for 'experiment_data' and 'results' directories
-    patient_data_path = root_path/'SpeechMappingData'/(patient_date + '_' + patient_name)/(patient_time + '_experiment')
+    date_patient_path = root_path/'SpeechMappingData'/(patient_date + '_' + patient_name)
+    patient_data_path = date_patient_path/(patient_time + '_experiment')
     experiment_data_path = patient_data_path/'experiment_data.h5'
     results_path = patient_data_path/'results'
     resource_path = root_path/'SpeechMapping/resources/'
@@ -48,17 +65,30 @@ def config_init(argv):
     makedirs(results_path, exist_ok=True)
     
     # Create directory stucture for experiment and update config with 'patient_data_path'
+    config['paths']['date_patient_path'] = str(date_patient_path)
     config['paths']['patient_data_path'] = str(patient_data_path)
     config['paths']['experiment_data_path'] = str(experiment_data_path)
     config['paths']['results_path'] = str(results_path)
     config['paths']['pictures_actions_path'] = str(resource_path/'pictures_action/')
-    config['paths']['pictures_object_path'] = str(resource_path/'pictures_object/')
+    config['paths']['pictures_objects_path'] = str(resource_path/'pictures_object/')
     config['paths']['pictures_others_path'] = str(resource_path/'pictures_other/')
     config['paths']['tone_path'] = str(resource_path/'sounds/tone.wav')
     if config['general'].getboolean('debug_mode'):
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
     
-
+    if not config['general'].getboolean('remove_procedure'):
+        if (Path(config['paths']['date_patient_path'])/'picture_remove_actions.txt').is_file():
+            with open(Path(config['paths']['date_patient_path'])/'picture_remove_actions.txt', 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    config['actions'][line.strip()] = 'false'
+        if (Path(config['paths']['date_patient_path'])/'picture_remove_objects.txt').is_file():
+            with open(Path(config['paths']['date_patient_path'])/'picture_remove_objects.txt', 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    config['objects'][line.strip()] = 'false'
+    
+    
     
     for i in range(config['processing'].getint('grid_channel_from'), config['processing'].getint('grid_channel_to') + 1):
         config['channels']['{}'.format(i)] = str(i - config['processing'].getint('grid_channel_from') + 1)

@@ -16,8 +16,8 @@ config['patient_info'] = {'patient_name': 'Test34',
       'patient_time': 'None'}
 
 config['display'] = {'resting_time': '9',
-      'pictures_action_time': '8',
-      'pictures_object_time': '8',
+      'pictures_actions_time': '8',
+      'pictures_objects_time': '8',
       'single_picture_time': '4',
       'time_between_pictures': '0.5',
       'time_other_pictures': '2',
@@ -34,23 +34,25 @@ config['paths'] = {'root_path': 'None',
       'experiment_data_path': 'None',
       'results_path': 'None',
       'pictures_actions_path': 'None',
-      'pictures_object_path': 'None',
+      'pictures_objects_path': 'None',
       'pictures_others_path': 'None',
       'tone_path': 'None',
       'lsl_stream_generator_path': 'None'}
 
-config['general'] = {'debug_mode': 'None',
-      'debug_time': '45',
-      'lsl_outlet_random': 'true',
-      'root_path_autogeneration': 'true',
-      'patient_date_time_autogeneration': 'true',
-      'fs': '2048',
-      'lsl_stream_name': 'EBNeuro_BePLusLTM_192.168.171.83'}
+config['general'] = {'debug_mode': 'false',
+                     'remove_procedure': 'false',                     
+                     'debug_time': '45',
+                     'lsl_outlet_random': 'true',
+                     'root_path_autogeneration': 'true',
+                     'patient_date_time_autogeneration': 'true',
+                     'fs': '2048',
+                     'lsl_stream_name': 'EBNeuro_BePLusLTM_192.168.171.83'}
 
 config['data_saving'] = {'save_through_buffer': 'true',
       'buffer_size_sec': '3',
       'group_names': 'data_rest data_actions data_objects',
-      'dataset_width': '72'}
+      'dataset_width': '72',
+      'save_picture_numbers': 'true'}
 
       
 config['processing'] = {'grid_size_X': '4',
