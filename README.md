@@ -8,7 +8,7 @@
 > pip install pylsl
 
 ## start in debug mode
-`<python main.py -debug>`
+> python main.py -debug
 
 ## start in default mode
-`<python main.py>`
+> python main.py
