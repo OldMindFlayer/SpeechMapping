@@ -10,7 +10,7 @@ import numpy as np
 from scipy.io.wavfile import write
 
 
-path = 'C:/Workspace/SpeechMappingData/19_03_20_Test23/10_00_56_experiment/experiment_data/experiment_data.h5'
+path = 'C:/SpeechMappingProject/SpeechMappingData/19_03_20_ABCDEF/14_06_53_experiment/experiment_data.h5'
 with h5py.File(path,'r+') as f1:
     keys = f1.keys()
     print(list(keys))

@@ -10,9 +10,14 @@ import time
 from os import makedirs
 from pathlib import Path
 
-def config_init():
+def config_init(argv):
     config = configparser.ConfigParser()
     config.read('config.ini')
+    
+    if len(argv) > 1 and argv[1] == '-debug':
+        config['general']['debug_mode'] = 'true'
+    else:
+        config['general']['debug_mode'] = 'false'
     
     # Path autogeneration ignores path in config and generate path based on location of 'main.py'
     if config['general'].getboolean('root_path_autogeneration'):

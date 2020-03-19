@@ -10,6 +10,11 @@ from pathlib import Path
 
 
 config = configparser.ConfigParser()
+
+config['patient_info'] = {'patient_name': 'Test34',
+      'patient_date': 'None',
+      'patient_time': 'None'}
+
 config['display'] = {'resting_time': '9',
       'pictures_action_time': '9',
       'pictures_object_time': '9',
@@ -24,17 +29,13 @@ config['display'] = {'resting_time': '9',
       'WINDOW_X': '800',
       'WINDOW_Y': '1280'}
 
-config['patient_info'] = {'patient_name': 'Test34',
-      'patient_date': '01_01_20',
-      'patient_time': '11_30_24'}
-
 config['paths'] = {'root_path': 'None',
       'patient_data_path': 'None',
       'experiment_data_path': 'None',
       'results_path': 'None',
       'lsl_stream_generator_path': 'None'}
 
-config['general'] = {'debug_mode': 'true',
+config['general'] = {'debug_mode': 'None',
       'debug_time': '45',
       'lsl_outlet_random': 'true',
       'root_path_autogeneration': 'true',
@@ -130,6 +131,11 @@ config['channels'] = {'1': 'None',
       '70': 'timestap',
       '71': 'picture type',
       '72': 'picture start points'}
+
+
+
+
+
 
 
 path = Path('write_config.py').resolve().parents[1]/'spmap'/'config.ini'

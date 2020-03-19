@@ -4,6 +4,8 @@ Created on Thu Mar 19 10:19:08 2020
 
 @author: dblok
 """
+from sys import argv
 
-for i in range(1, 72):
-    print('\'{}\': \'None\','.format(i))
+
+if len(argv) > 1:
+    print(argv[1])

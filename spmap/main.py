@@ -10,14 +10,15 @@ from lsl_stream_listener import LSL_Listener
 from config import config_init
 import time
 from queue import Queue
-from pathlib import Path
+#from pathlib import Path
 from data_processing import DataProcessing
-
+from sys import argv
 
 def start():
     
     # create config dict
-    config = config_init()
+    config = config_init(argv)
+    
     
     # Queue is used to pass arguments from display thread to main thread (to LSL_Listener)
     q_from_display_to_listener = Queue()
