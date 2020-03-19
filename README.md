@@ -10,5 +10,8 @@
 ## start in debug mode
 > python main.py -debug
 
+## start in removal mode
+> python main.py -remove
+
 ## start in default mode
 > python main.py

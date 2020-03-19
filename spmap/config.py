@@ -27,9 +27,9 @@ def config_init(argv):
     
     if config['general'].getboolean('remove_procedure'):
         config['display']['resting_time'] = '0'
-        config['display']['pictures_actions_time'] = '10000'
-        config['display']['pictures_objects_time'] = '10000'
-        config['display']['time_between_pictures'] = '2'
+        config['display']['pictures_action_time'] = '10000'
+        config['display']['pictures_object_time'] = '10000'
+        config['display']['time_between_pictures'] = '3'
         config['display']['shuffle_pictures'] = 'false'
     
     
@@ -76,19 +76,7 @@ def config_init(argv):
     if config['general'].getboolean('debug_mode'):
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
     
-    if not config['general'].getboolean('remove_procedure'):
-        if (Path(config['paths']['date_patient_path'])/'picture_remove_actions.txt').is_file():
-            with open(Path(config['paths']['date_patient_path'])/'picture_remove_actions.txt', 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    config['actions'][line.strip()] = 'false'
-        if (Path(config['paths']['date_patient_path'])/'picture_remove_objects.txt').is_file():
-            with open(Path(config['paths']['date_patient_path'])/'picture_remove_objects.txt', 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    config['objects'][line.strip()] = 'false'
-    
-    
+
     
     for i in range(config['processing'].getint('grid_channel_from'), config['processing'].getint('grid_channel_to') + 1):
         config['channels']['{}'.format(i)] = str(i - config['processing'].getint('grid_channel_from') + 1)

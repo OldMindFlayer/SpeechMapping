@@ -16,23 +16,26 @@ import math
 from pathlib import Path
 
 
+
 class Display:
     def __init__(self, config, q_from_display_to_listener):
         self.config = config
 
         # get paths to resources
-        self.path_actions = self.config['paths']['pictures_actions_path']
-        self.path_objects = self.config['paths']['pictures_objects_path']
+        self.path_action = self.config['paths']['pictures_actions_path']
+        self.path_object = self.config['paths']['pictures_objects_path']
         self.path_other = self.config['paths']['pictures_others_path']
         self.path_sound = self.config['paths']['tone_path']
+        self.path_file_actions_remove = self.config['paths']['date_patient_path'] + "/picture_numbers_action_remove.txt"
+        self.path_file_objects_remove = self.config['paths']['date_patient_path'] + "/picture_numbers_object_remove.txt"
         
         # command to LSL listener to start listen the stream
         self.q_from_display_to_listener = q_from_display_to_listener
         self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))
         
         # initialise amount of time ALL pictures will be shown
-        self.pictures_actions_time = self.config['display'].getint('pictures_actions_time')
-        self.pictures_objects_time = self.config['display'].getint('pictures_objects_time')
+        self.pictures_action_time = self.config['display'].getint('pictures_action_time')
+        self.pictures_object_time = self.config['display'].getint('pictures_object_time')
         
         # initialise amount of time EACH picture will be shown
         self.single_picture_time = int(self.config['display'].getfloat('single_picture_time')*1000)
@@ -40,20 +43,29 @@ class Display:
         self.time_other_pictures = int(self.config['display'].getfloat('time_other_pictures')*1000)
         
         # initialise configuration of display
-        self.pictures_rotated = self.config['display'].getboolean('pictures_rotated')
         self.WINDOW_X = self.config['display'].getint('WINDOW_X')
         self.WINDOW_Y = self.config['display'].getint('WINDOW_Y')
+        self.rotate_pictures = self.config['display'].getboolean('rotate_pictures')
         self.pictures_action = []
         self.pictures_object = []
         self.pictures_other = []
-        self.pictures_types = [self.pictures_action, self.pictures_object, self.pictures_other]
+        self.picture_types = [self.pictures_action, self.pictures_object, self.pictures_other]
         
         self.remove_procedure = config['general'].getboolean('remove_procedure')
+        self.picture_numbers_action_remove = []
+        self.picture_numbers_object_remove = []
         if self.remove_procedure:
-            self.picture_remove_actions = 0
-            self.picture_remove_objects = 0
-
-
+            with open(self.path_file_actions_remove, 'w') as file:
+                pass
+            with open(self.path_file_objects_remove, 'w') as file:
+                pass
+        else:
+            if Path(self.path_file_actions_remove).is_file():
+                with open(self.path_file_actions_remove, 'r') as file:
+                    self.picture_numbers_action_remove = list(map(str.strip, file.readlines()))
+            if Path(self.path_file_objects_remove).is_file():
+                with open(self.path_file_objects_remove, 'r') as file:
+                    self.picture_numbers_object_remove = list(map(str.strip, file.readlines()))
 
         # make image with message 'Press any button...'
         self.img_prepare = None
@@ -88,21 +100,21 @@ class Display:
             self._start_clock()
         
         # demonstrate pictures
-            
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other[1][0])
+        cv.imshow('display', self.pictures_other[1].img)
         cv.waitKey(self.time_other_pictures)
         self.q_from_display_to_listener.put(('patient_state', 2))
-        self.picture_remove_actions = self._show_pictures(self.pictures_action)
+        self.picture_numbers_action_remove = self._show_pictures(self.pictures_action)
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other[3][0])
-        cv.waitKey(self.time_other_pictures)
-        cv.imshow('display', self.pictures_other[2][0])
+        cv.imshow('display', self.pictures_other[3].img)
+        cv.waitKey(self.time_other_pictures//2)
+        
+        cv.imshow('display', self.pictures_other[2].img)
         cv.waitKey(self.time_other_pictures)
         self.q_from_display_to_listener.put(('patient_state', 3))
-        self.picture_remove_objects = self._show_pictures(self.pictures_object)
+        self.picture_numbers_object_remove = self._show_pictures(self.pictures_object)
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other[3][0])
+        cv.imshow('display', self.pictures_other[3].img)
         cv.waitKey(self.time_other_pictures)
 
         # wait before closure
@@ -110,12 +122,14 @@ class Display:
         cv.imshow('display', self.img_prepare)
         cv.waitKey(0)
         self.q_from_display_to_listener.put(('lsl_stream_listener_state', False))
+        
+        # if remove procedure is active, write unknown picture numbers into files
         if self.remove_procedure:
-            with open(Path(self.config['paths']['date_patient_path'])/'picture_remove_actions.txt', 'w') as file:
-                for number in self.picture_remove_actions:
+            with open(self.path_file_actions_remove, 'w') as file:
+                for number in self.picture_numbers_action_remove:
                     file.write(str(number) + '\n')
-            with open(Path(self.config['paths']['date_patient_path'])/'picture_remove_objects.txt', 'w') as file:
-                for number in self.picture_remove_objects:
+            with open(self.path_file_objects_remove, 'w') as file:
+                for number in self.picture_numbers_object_remove:
                     file.write(str(number) + '\n')
 
 
@@ -136,7 +150,7 @@ class Display:
         img = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
         while time.perf_counter() < t + resting_time:
             time_pass = t + resting_time - time.perf_counter()
-            if int(time_pass) % 5 == 0:
+            if int(time_pass) % 10 == 0:
                 print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
             cv.imshow('display', img)
             k = cv.waitKey(1000)
@@ -150,33 +164,33 @@ class Display:
         if self.time_between_pictures > 0:
             if self.config['display'].getboolean('sound_between_pictures'):
                 winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
-                cv.imshow('display', self.pictures_other[0][0])
+                cv.imshow('display', self.pictures_other[0].get_img())
                 cv.waitKey(self.time_between_pictures)
                 winsound.PlaySound(None, winsound.SND_ASYNC)
             else:
-                cv.imshow('display', self.pictures_other[0][0])
+                cv.imshow('display', self.pictures_other[0].get_img())
                 cv.waitKey(self.time_between_pictures)
         for picture in pictures:
             self.q_from_display_to_listener.put(('picture_shown', True))
-            cv.imshow('display', picture[0])
+            cv.imshow('display', picture.get_img())
             k = cv.waitKey(self.single_picture_time)
             if k == 32 and self.remove_procedure:
-                picture_remove.append(picture[1])
+                picture_remove.append(picture.get_number())
                 continue
             if self.time_between_pictures > 0:
                 if self.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
-                    cv.imshow('display', self.pictures_other[0][0])
-                    cv.waitKey(self.time_between_pictures)
+                    cv.imshow('display', self.pictures_other[0].get_img())
+                    k = cv.waitKey(self.time_between_pictures)
                     winsound.PlaySound(None, winsound.SND_ASYNC)
                     if k == 32 and self.remove_procedure:
-                        picture_remove.append(picture[1])
+                        picture_remove.append(picture.get_number())
                         continue
                 else:
-                    cv.imshow('display', self.pictures_other[0][0])
-                    cv.waitKey(self.time_between_pictures)
+                    cv.imshow('display', self.pictures_other[0].get_img())
+                    k = cv.waitKey(self.time_between_pictures)
                     if k == 32 and self.remove_procedure:
-                        picture_remove.append(picture[1])
+                        picture_remove.append(picture.get_number())
                         continue
         return picture_remove
         
@@ -184,114 +198,158 @@ class Display:
     def _load_pictures(self):
         
         # create lists of names of picturs
-        pictures_names_other = sorted(os.listdir(self.path_other), key=lambda x: int(x[:-4]))
-        pictures_names_actions = []
-        for picture_name in sorted(os.listdir(self.path_actions), key=lambda x: int(x[:-4])):
-            if self.config['actions'].getboolean(picture_name[:-4]):
-                pictures_names_actions.append(picture_name)
-        pictures_names_objects = []
-        for picture_name in sorted(os.listdir(self.path_objects), key=lambda x: int(x[:-4])):
-            if self.config['objects'].getboolean(picture_name[:-4]):
-                pictures_names_objects.append(picture_name)
+        picture_names_other = sorted(os.listdir(self.path_other), key=lambda x: int(x[:-4]))
+        picture_names_action = sorted(os.listdir(self.path_action), key=lambda x: int(x[:-4]))
+        picture_names_object = sorted(os.listdir(self.path_object), key=lambda x: int(x[:-4]))
+        if not self.remove_procedure and len(self.picture_numbers_action_remove)>1:
+            for picture_number in self.picture_numbers_action_remove:
+                s = str(picture_number)+'.jpg'
+                if s in picture_names_action:
+                    picture_names_action.remove(s)
+        if not self.remove_procedure and len(self.picture_numbers_object_remove)>1:
+            for picture_number in self.picture_numbers_object_remove:
+                s = str(picture_number)+'.jpg'
+                if s in picture_names_object:
+                    picture_names_object.remove(s)
                 
         if self.config['display'].getboolean('shuffle_pictures'):
-            random.shuffle(pictures_names_actions)
-            random.shuffle(pictures_names_objects)
+            random.shuffle(picture_names_action)
+            random.shuffle(picture_names_object)
 
         # decide on number of pictures to show
-        number_of_pictures_actions = self._get_number_of_pictures(self.pictures_actions_time)
-        number_of_pictures_objects = self._get_number_of_pictures(self.pictures_objects_time)
-        if number_of_pictures_actions == -1 or number_of_pictures_actions > len(pictures_names_actions):
-            number_of_pictures_actions = len(pictures_names_actions)
-        if number_of_pictures_objects == -1 or number_of_pictures_objects > len(pictures_names_objects):
-            number_of_pictures_objects = len(pictures_names_objects)
+        number_of_pictures_action = self._get_number_of_pictures(self.pictures_action_time)
+        number_of_pictures_object = self._get_number_of_pictures(self.pictures_object_time)
+        if number_of_pictures_action == -1 or number_of_pictures_action > len(picture_names_action):
+            number_of_pictures_action = len(picture_names_action)
+        if number_of_pictures_object == -1 or number_of_pictures_object > len(picture_names_object):
+            number_of_pictures_object = len(picture_names_object)
 
-        # save file with numbers of pictures shown
-        if self.config['data_saving'].getboolean('save_picture_numbers'):
-            name_file_actions = open(self.config['paths']['patient_data_path'] + "/pictures_names_actions.txt", "w") 
-            for picture_number in sorted(pictures_names_actions[:number_of_pictures_actions], key=lambda x: int(x[:-4])):
-                name_file_actions.write(picture_number[:-4] + '\n')
-            name_file_actions.close()
-            name_file_objects = open(self.config['paths']['patient_data_path'] + "/pictures_names_objects.txt", "w") 
-            for picture_number in sorted(pictures_names_objects[:number_of_pictures_objects], key=lambda x: int(x[:-4])):
-                name_file_objects.write(picture_number[:-4] + '\n')
-            name_file_objects.close()
-            
+        # read pictures into memory and save loaded numbers into files
+        picture_numbers_action_to_show = []
+        picture_numbers_object_to_show = []
         
-        # read pictures into memory
-        for i in range(number_of_pictures_actions):
-            self.pictures_action.append((cv.imread(self.path_actions + '/' + pictures_names_actions[i]), pictures_names_actions[i][:-4]))
-        for i in range(number_of_pictures_objects):
-            self.pictures_object.append((cv.imread(self.path_objects + '/' + pictures_names_objects[i]), pictures_names_objects[i][:-4]))
-        for i in range(len(pictures_names_other)):
-            self.pictures_other.append((cv.imread(self.path_other + '/' + pictures_names_other[i]), ''))
-
-
+        for i in range(number_of_pictures_action):
+            self.pictures_action.append(Picture(self.path_action, picture_names_action[i]))
+            picture_numbers_action_to_show.append(picture_names_action[i][:-4])
+        for i in range(number_of_pictures_object):
+            self.pictures_object.append(Picture(self.path_object, picture_names_object[i]))
+            picture_numbers_object_to_show.append(picture_names_object[i][:-4])
+        for i in range(len(picture_names_other)):
+            self.pictures_other.append(Picture(self.path_other, picture_names_other[i]))
+            
+        if self.config['data_saving'].getboolean('save_picture_numbers'):
+            with open(self.config['paths']['patient_data_path'] + "/picture_names_action.txt", "w") as file:
+                for number in picture_numbers_action_to_show:
+                    file.write(str(number) + '\n')
+            with open(self.config['paths']['patient_data_path'] + "/picture_names_object.txt", "w") as file:
+                for number in picture_numbers_object_to_show:
+                    file.write(str(number) + '\n')
+        
+        
     def _prepare_pictures(self):
-        for i in range(len(self.pictures_types)):
-            if self.pictures_rotated:
-                self._prepare_pictures_helper_rotate_and_resize(self.pictures_types[i])
-            self._prepare_pictures_helper_pad(self.pictures_types[i])
+        for picture_type in self.picture_types:
+            for picture in picture_type:
+                picture.prepare(self.WINDOW_X, self.WINDOW_Y, self.rotate_pictures)
  
-
-    def _prepare_pictures_helper_rotate_and_resize(self, pictures):
-        for i in range(len(pictures)):
-            picture = cv.rotate(pictures[i][0], cv.ROTATE_90_COUNTERCLOCKWISE)
-            x, y, _ = picture.shape
-            if x / self.WINDOW_Y > y / self.WINDOW_X:
-                picture = cv.resize(picture, (self.WINDOW_Y, y*self.WINDOW_X//self.WINDOW_Y))
-            else:
-                picture = cv.resize(picture, (x*self.WINDOW_Y//self.WINDOW_X, self.WINDOW_X))
-            pictures[i] = picture, pictures[i][1]
-
-
-    def _prepare_pictures_helper_pad(self, pictures):
-        for i in range(len(pictures)):
-            x, y, _ = pictures[i][0].shape
-            if (self.WINDOW_X - x) < 0:
-                left_pad = 0
-                right_pad = 0
-            elif (self.WINDOW_X - x) % 2:
-                left_pad = (self.WINDOW_X - x) // 2
-                right_pad = (self.WINDOW_X - x) // 2 + 1
-            else: 
-                left_pad = (self.WINDOW_X - x) // 2
-                right_pad = (self.WINDOW_X - x) // 2
-            if (self.WINDOW_Y - y) < 0:
-                top_pad = 0
-                bottom_pad = 0    
-            elif (self.WINDOW_Y - y) % 2:
-                top_pad = (self.WINDOW_Y - y) // 2
-                bottom_pad = (self.WINDOW_Y - y) // 2 + 1
-            else: 
-                top_pad = (self.WINDOW_Y - y) // 2
-                bottom_pad = (self.WINDOW_Y - y) // 2
-            pictures[i] = np.pad(pictures[i][0], ((left_pad, right_pad), (top_pad, bottom_pad), (0,0)), mode='constant',), pictures[i][1]
-
 
     def _get_number_of_pictures(self, pictures_time):
         if pictures_time == -1:
             number_of_pictures = -1
         else:
-            number_of_pictures = math.ceil(pictures_time / (self.single_picture_time/1000 + self.time_between_pictures/1000))
+            number_of_pictures = math.ceil((pictures_time+self.time_between_pictures/1000)/(self.single_picture_time/1000+self.time_between_pictures/1000))
         return number_of_pictures
         
+
+    
+    
+    
+    
+    
+    
+    
+    
+class Picture():
+    def __init__(self, directory_path, file_name):
+        self.directory_path = directory_path
+        self.file_name = file_name
+        directory = Path(self.directory_path).parts[-1]
+        if directory == 'pictures_action':
+            self.picture_type = 'action'
+        elif directory == 'pictures_object':
+            self.picture_type = 'object'
+        elif directory == 'pictures_other':
+            self.picture_type = 'other'
+        else:
+            self.picture_type = None
+            print('Picture: looking for picture in wrong directory')
+        self.img = cv.imread(self.directory_path + '/' + self.file_name)
+        
+    
+    def _rotate_resize(self, X, Y):
+        self.img = cv.rotate(self.img, cv.ROTATE_90_COUNTERCLOCKWISE)
+        x, y, _ = self.img.shape
+        if x / Y > y / X:
+            self.img = cv.resize(self.img, (Y, y*X // Y))
+        else:
+            self.img = cv.resize(self.img, (x*Y // X, X))
+
+    def _pad(self, X, Y):
+        x, y, _ = self.img.shape
+        if (X - x) < 0:
+            left_pad = 0
+            right_pad = 0
+        elif (X - x) % 2:
+            left_pad = (X - x) // 2
+            right_pad = (X - x) // 2 + 1
+        else: 
+            left_pad = (X - x) // 2
+            right_pad = (X - x) // 2
+        if (Y - y) < 0:
+            top_pad = 0
+            bottom_pad = 0    
+        elif (Y - y) % 2:
+            top_pad = (Y - y) // 2
+            bottom_pad = (Y - y) // 2 + 1
+        else: 
+            top_pad = (Y - y) // 2
+            bottom_pad = (Y - y) // 2
+        self.img = np.pad(self.img, ((left_pad, right_pad), (top_pad, bottom_pad), (0,0)), mode='constant',)
+
+    def prepare(self, X, Y, rotate):
+        if rotate:
+            self._rotate_resize(X, Y)
+        self._pad(X, Y)
+
+    def get_img(self):
+        return self.img
+    
+    def get_file_name(self):
+        return self.file_name
+    
+    def get_number(self):
+        return int(self.file_name[:-4])
+    
+    def get_type(self):
+        return self.picture_type
+    
+    def shape(self):
+        return self.img.shape
+    
+    
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
     from queue import Queue
-    import configparser
-    from pathlib import Path
-    
-    config = configparser.ConfigParser()
-    config.read(Path('display.py').resolve().parents[1]/'util/custom_config_display.ini')
     q = Queue()
     
-    display = Display(config, q)
-    display.start()
-    
-    
-
 
 
 
