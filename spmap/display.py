@@ -19,11 +19,12 @@ class Display:
     def __init__(self, config, q_from_display_to_listener):
         self.config = config
         
+        #!!! remake!!!!
         # initialise paths to resources
-        self.path_action = self.config['general']['root_path'] + '/resources/pictures_action/'
-        self.path_object = self.config['general']['root_path'] + '/resources/pictures_object/'
-        self.path_other = self.config['general']['root_path'] + '/resources/pictures_other/'
-        self.path_sound = self.config['general']['root_path'] + '/resources/sounds/tone.wav'
+        self.path_action = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_action/'
+        self.path_object = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_object/'
+        self.path_other = self.config['paths']['root_path'] + '/SpeechMapping/resources/pictures_other/'
+        self.path_sound = self.config['paths']['root_path'] + '/SpeechMapping/resources/sounds/tone.wav'
         
         # command to LSL listener to start listen the stream
         self.q_from_display_to_listener = q_from_display_to_listener

@@ -11,10 +11,22 @@ from pathlib import Path
 class DataProcessing():
     def __init__(self, config):
         self.config = config
+        self.use_interval = config['processing'].getboolean('use_interval')
         
         # paths to files
-        self.path_to_experiment_data_file = Path(config['patient_info']['patient_experiment_data_path'])/'experiment_data.h5'
-        self.path_to_results_file = Path(config['patient_info']['patient_results_path'])/'R2.png'
+        self.path_to_experiment_data_file = Path(config['paths']['experiment_data_path'])
+        file_name_base = 'R2.png'
+        if self.use_interval:
+            file_name_base = 'R2_interval.png'
+        self.path_to_results_file = Path(config['paths']['results_path'])/file_name_base
+        file_name_number = 1
+        while self.path_to_results_file.is_file():
+            if self.use_interval:
+                self.path_to_results_file = Path(config['paths']['results_path'])/('R2_interval_{}.png'.format(file_name_number))
+            else:
+                self.path_to_results_file = Path(config['paths']['results_path'])/('R2_{}.png'.format(file_name_number))
+            file_name_number += 1
+
 
         self.GRID_X  = config['processing'].getint('grid_size_x')
         self.GRID_Y  = config['processing'].getint('grid_size_y')
@@ -26,10 +38,9 @@ class DataProcessing():
         self.FMAX    = 120;
         self.FMIN    = 60;
         self.FSTEP   = 20;
-        self.use_interval = config['processing'].getboolean('use_interval')
         self.INTERVAL_START = config['processing'].getfloat('interval_start')
         self.INTERVAL_STOP  = config['processing'].getfloat('interval_stop')
-        self.data_groups = ['data_rest', 'data_actions', 'data_objects']
+        self.data_groups = self.config['data_saving']['group_names'].split(' ')
         
         self.VALS  = [0,1,1]; 
         self.PAIRS = [(0,1),(0,2)];
@@ -43,7 +54,10 @@ class DataProcessing():
 
         # create channel grid with numbers equal to numbers from lsl stream
         assert self.NUM_CHANNELS == (self.grid_channel_to - self.grid_channel_from + 1)
-        self.ecog_channel_grid = np.arange(self.grid_channel_from, self.grid_channel_to+1).reshape(self.GRID_X, self.GRID_Y).T[::-1,:]
+        if config['processing'].getboolean('plot_grid_base'):
+            self.ecog_channel_grid = np.arange(1, self.grid_channel_to - self.grid_channel_from + 2).reshape(self.GRID_X, self.GRID_Y).T[::-1,:]
+        else:
+            self.ecog_channel_grid = np.arange(self.grid_channel_from, self.grid_channel_to+1).reshape(self.GRID_X, self.GRID_Y).T[::-1,:]
         print(self.ecog_channel_grid)
 
 
@@ -250,8 +264,6 @@ class DataProcessing():
         viridis_cm = plt.cm.get_cmap('viridis', 256)
         viridis_cm.set_bad('black', 1)
         
-        self.ecog_channel_grid
-        
         for i in range(2):
             for b in range(self.PAIR_R2[i].shape[1]):
                 plt.subplot(3,self.PAIR_R2[i].shape[1],(i)*self.PAIR_R2[i].shape[1] + (b+1))  
@@ -266,16 +278,23 @@ class DataProcessing():
                 plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
                 plt.title(str(self.fbandmins[b])+'-'+str(self.fbandmaxs[b])+ ' Hz');
                 if b == 0:
-                    plt.ylabel(row_titles[i], size = 24)
+                    plt.text(-10, 5, row_titles[i], size = 24)
+                plt.axis("off")
         
         for b in range(3):
             plt.subplot(3,self.PAIR_R2[0].shape[1], self.PAIR_R2[0].shape[1]*2 + (b+1))
             im = self.GRID50Hz[b]
             plt.imshow(im)
             plt.colorbar();
+            for m in range(self.GRID_Y):
+                for n in range(self.GRID_X):
+                    plt.text(n, m, str(self.ecog_channel_grid[m,n]), color='white', ha='center', va='center' )
+            plt.plot([0.5, 0.5], [-0.5, 1.5], color='silver', lw=2)
+            plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
             plt.title(col_titles[b]);
             if b == 0:
-                plt.ylabel(row_titles[2], size = 24)
+                plt.text(-8, 5, row_titles[2], size = 24)
+            plt.axis("off")
         
         fig.tight_layout()
         plt.savefig(self.path_to_results_file)
@@ -285,7 +304,7 @@ class DataProcessing():
 if __name__ == '__main__':
     import configparser
     config = configparser.ConfigParser()
-    path = Path('data_processing.py').resolve().parents[1]/'util'/'config.ini'
+    path = Path('custom_config.ini')
     config.read(path)
     dp = DataProcessing(config)
     dp.calculate()

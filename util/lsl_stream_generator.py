@@ -21,6 +21,7 @@ class LSL_Generator():
         self.stream_time = stream_time
         self.q_from_display_to_listener = q_from_display_to_listener
         self.thread = Thread(target=self._stream, args=())
+        self.thread.daemon = True
         
         
     def start(self):
@@ -32,9 +33,10 @@ class LSL_Generator():
         outlet = pylsl.stream_outlet(info)
         print('DebudStream: Streaming start...')
         
-        start_time = time.time()
+        #start_time = time.time()
         current_time = time.time()
-        while (time.time() - start_time < self.stream_time):
+        #while (time.time() - start_time < self.stream_time):
+        while True:
             if time.time() - current_time > self.seconnds_per_sample:
                 current_time = time.time()
                 sample = [random.random() for i in range(self.channel_count)]

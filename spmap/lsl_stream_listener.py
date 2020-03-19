@@ -8,7 +8,7 @@ Created on Sat Feb 29 13:31:28 2020
 from pylsl import StreamInlet, resolve_stream
 import numpy as np
 import time
-from data_saving import SavePatientData
+from data_saving import SaveExperimentData
 
 
 class LSL_Listener():
@@ -21,15 +21,17 @@ class LSL_Listener():
         # 3 - objects
         self.config = config
         self.maxbuffer_size = maxbuffer_size
-        self.saver = SavePatientData(self.config['general'].getint('fs'), self.config['patient_info']['patient_experiment_data_path'])
+        self.saver = SaveExperimentData(config)
         self.q_from_display_to_listener = q_from_display_to_listener
         self.lsl_stream_listener_state = False
         self.patient_state = 0
         self.picture_shown = False
         
+        self.groups = self.config['data_saving']['group_names'].split(' ')
+        
         # initialize configuration based on saving method (though buffer or without it)
-        if self.config['general'].getboolean('save_through_buffer'):
-            self.buffer_size = int(self.config['general'].getfloat('buffer_size_sec')*self.config['general'].getint('fs'))
+        if self.config['data_saving'].getboolean('save_through_buffer'):
+            self.buffer_size = int(self.config['data_saving'].getfloat('buffer_size_sec')*self.config['general'].getint('fs'))
             self.buffer = []
             self.buffer_length = 0
         else:
@@ -137,16 +139,12 @@ class LSL_Listener():
     # save data buffer based on current patient state
     def _save_buffer(self, patient_state):
         npbuffer = np.vstack(self.buffer)
-        if (patient_state == 0):
+        if patient_state == 0:
             pass
-        elif (patient_state == 1):
-            self.saver.save_data_rest(npbuffer)
-        elif (patient_state == 2):
-            self.saver.save_data_actions(npbuffer)
-        elif (patient_state == 3):
-            self.saver.save_data_objects(npbuffer)
-        else:
+        elif patient_state < 0 or patient_state > 3:
             print('LSL_Listener: wrong patient_state value')
+        else:
+            self.saver.save_data_buffer(npbuffer, self.groups[patient_state - 1])
         self.buffer = []
         self.buffer_length = 0
 
@@ -155,12 +153,7 @@ class LSL_Listener():
         for i in range(1,len(self.memory)):
             if len(self.memory[i]) > 0:
                 npmemory = np.vstack(self.memory[i])
-                if (i == 1):
-                    self.saver.save_data_rest(npmemory)
-                elif (i == 2):
-                    self.saver.save_data_actions(npmemory)
-                elif (i == 3):
-                    self.saver.save_data_objects(npmemory)
+                self.saver.save_data_buffer(npmemory, self.groups[i - 1])
                 self.memory[i] = []
                 
 
