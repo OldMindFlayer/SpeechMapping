@@ -33,16 +33,16 @@ class Display:
         self.q_from_display_to_listener = q_from_display_to_listener
         self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))
         
-        # initialise amount of time ALL pictures will be shown
+        # initialize amount of time ALL pictures will be shown
         self.pictures_action_time = self.config['display'].getint('pictures_action_time')
         self.pictures_object_time = self.config['display'].getint('pictures_object_time')
         
-        # initialise amount of time EACH picture will be shown
+        # initialize amount of time EACH picture will be shown
         self.single_picture_time = int(self.config['display'].getfloat('single_picture_time')*1000)
         self.time_between_pictures = int(self.config['display'].getfloat('time_between_pictures')*1000)
         self.time_other_pictures = int(self.config['display'].getfloat('time_other_pictures')*1000)
         
-        # initialise configuration of display
+        # initialize configuration of display
         self.WINDOW_X = self.config['display'].getint('WINDOW_X')
         self.WINDOW_Y = self.config['display'].getint('WINDOW_Y')
         self.rotate_pictures = self.config['display'].getboolean('rotate_pictures')
@@ -51,10 +51,13 @@ class Display:
         self.pictures_other = []
         self.picture_types = [self.pictures_action, self.pictures_object, self.pictures_other]
         
+        # type of procidure: remove pictures or speech mapping
         self.remove_procedure = config['general'].getboolean('remove_procedure')
         self.picture_numbers_action_remove = []
         self.picture_numbers_object_remove = []
         if self.remove_procedure:
+            self.single_picture_time = int(self.config['display'].getfloat('single_picture_time_remove')*1000)
+            self.time_between_pictures = int(self.config['display'].getfloat('time_between_pictures_remove')*1000)    
             with open(self.path_file_actions_remove, 'w') as file:
                 pass
             with open(self.path_file_objects_remove, 'w') as file:
@@ -98,6 +101,7 @@ class Display:
         if self.config['display'].getint('resting_time') > 0:
             self.q_from_display_to_listener.put(('patient_state', 1))
             self._start_clock()
+        input("Press Enter to continue...")
         
         # demonstrate pictures
         self.q_from_display_to_listener.put(('patient_state', 0))
@@ -106,8 +110,6 @@ class Display:
         self.q_from_display_to_listener.put(('patient_state', 2))
         self.picture_numbers_action_remove = self._show_pictures(self.pictures_action)
         self.q_from_display_to_listener.put(('patient_state', 0))
-        cv.imshow('display', self.pictures_other[3].img)
-        cv.waitKey(self.time_other_pictures//2)
         
         cv.imshow('display', self.pictures_other[2].img)
         cv.waitKey(self.time_other_pictures)
@@ -150,8 +152,8 @@ class Display:
         img = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
         while time.perf_counter() < t + resting_time:
             time_pass = t + resting_time - time.perf_counter()
-            if int(time_pass) % 10 == 0:
-                print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
+            #if int(time_pass) % 10 == 0:
+            print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
             cv.imshow('display', img)
             k = cv.waitKey(1000)
             if k == 27:
@@ -164,34 +166,30 @@ class Display:
         if self.time_between_pictures > 0:
             if self.config['display'].getboolean('sound_between_pictures'):
                 winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
-                cv.imshow('display', self.pictures_other[0].get_img())
-                cv.waitKey(self.time_between_pictures)
+            cv.imshow('display', self.pictures_other[0].get_img())
+            cv.waitKey(self.time_between_pictures)
+            if self.config['display'].getboolean('sound_between_pictures'):
                 winsound.PlaySound(None, winsound.SND_ASYNC)
-            else:
-                cv.imshow('display', self.pictures_other[0].get_img())
-                cv.waitKey(self.time_between_pictures)
         for picture in pictures:
             self.q_from_display_to_listener.put(('picture_shown', True))
             cv.imshow('display', picture.get_img())
             k = cv.waitKey(self.single_picture_time)
             if k == 32 and self.remove_procedure:
                 picture_remove.append(picture.get_number())
-                continue
+            elif k == 27:
+                break
             if self.time_between_pictures > 0:
                 if self.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(self.path_sound, winsound.SND_ASYNC)
-                    cv.imshow('display', self.pictures_other[0].get_img())
-                    k = cv.waitKey(self.time_between_pictures)
+                cv.imshow('display', self.pictures_other[0].get_img())
+                cv.waitKey(self.time_between_pictures)
+                if k == 32 and self.remove_procedure:
+                    picture_remove.append(picture.get_number())
+                elif k == 27:
+                    break
+                if self.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(None, winsound.SND_ASYNC)
-                    if k == 32 and self.remove_procedure:
-                        picture_remove.append(picture.get_number())
-                        continue
-                else:
-                    cv.imshow('display', self.pictures_other[0].get_img())
-                    k = cv.waitKey(self.time_between_pictures)
-                    if k == 32 and self.remove_procedure:
-                        picture_remove.append(picture.get_number())
-                        continue
+        picture_remove = sorted(list(set(picture_remove)))
         return picture_remove
         
     

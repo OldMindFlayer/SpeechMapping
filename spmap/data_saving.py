@@ -8,7 +8,7 @@ Created on Fri Feb 28 08:23:22 2020
 from pathlib import Path
 import numpy as np
 import h5py
-import config
+from config import config_init
 
 
 class SaveExperimentData():
@@ -60,16 +60,16 @@ class SaveExperimentData():
                 
 
 if __name__ == '__main__':
-    config.init()
-    save_data = SaveExperimentData(2048)
-    save_data.reforge_into_raw_data()
-    add = 0
+    config = config_init([''])
+    recorder = Recorder(config)
+    recorder.reforge_into_raw_data()
+    add = 1
     if add:
         a = np.random.random(size=(3,72))
         for i in range(2):
-            save_data.save_data_rest(a)
+            recorder.save_data_rest(a)
         for i in range(6):
-            save_data.save_data_actions(a)
+            recorder.save_data_actions(a)
 
     with h5py.File(save_data.experiment_data_path, "r") as file:
         keys = file.keys()

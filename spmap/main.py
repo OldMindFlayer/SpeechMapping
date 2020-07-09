@@ -6,7 +6,7 @@ Created on Sat Feb 29 08:52:02 2020
 """
 
 from display import Display
-from lsl_stream_listener import LSL_Listener
+from lsl_listener import LSL_Listener
 from config import config_init
 import time
 from queue import Queue

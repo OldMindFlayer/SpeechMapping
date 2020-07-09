@@ -110,7 +110,6 @@ class DataProcessing():
                 raw_data = np.array(file[data_group]['raw_data'])
                 srate = file['fs'][()]
                 self.SRATE.append(srate);
-            
             ecog_data = np.copy(raw_data[:,ch_idxs_ecog])
             stim_data = np.copy(raw_data[:,ch_idxs_stim]) 
             ecog_50hz_av = np.mean(self._filterEMG(ecog_data,48,52, srate), axis = 0)
@@ -151,7 +150,6 @@ class DataProcessing():
             res_r2 = np.zeros((self.ECOG[i].shape[1],len(self.fbandmins)))
             res_p = np.ones((self.ECOG[i].shape[1],len(self.fbandmins)))
             
-
             if not self.use_interval:
                 for ch in range(self.ECOG[i].shape[1]):
                     if (self.BAD_CH[i][ch] | self.BAD_CH[j][ch]):
@@ -193,8 +191,11 @@ class DataProcessing():
                         ecog_concat = np.vstack((ecog_i,ecog_j));
                         #stim_concat = np.vstack((stim_i,stim_j));
                         
+                        print(ecog_i.shape, ecog_j.shape)
+                        
                         ind_stim_i = np.argwhere(stim_i[:,0]==1)[:,0];
                         ind_stim_j = np.argwhere(stim_j[:,0]==1)[:,0];
+                        print(ind_stim_i, ind_stim_j)
                         
                         # find indices around stimulus onset
                         if( (ind_stim_i.shape[0]==0) & (ind_stim_j.shape[0]==0)):
@@ -203,6 +204,7 @@ class DataProcessing():
                             indj = np.zeros(0);
                             for k  in ind_stim_j:
                                 indj = np.append(indj, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
+                                print(indj.shape)
                             indi = np.array(range(0,min(ecog_i.shape[0],indj.shape[0])));
                         elif((ind_stim_i.shape[0]!=0) & (ind_stim_j.shape[0]==0)):      
                             indi = np.zeros(0);
@@ -218,11 +220,12 @@ class DataProcessing():
                                 indi = np.append(indi, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
                            
                             indj = np.array(range(0,min(ecog_j.shape[0],indi.shape[0])));
-                
-                        # cast as it
+                        
+                        print(indi, indj)
+                        # cast as int
                         indi  = indi.astype(int);
                         indj = indj.astype(int);
-                   
+                        print(indi.shape, indj.shape)
         
                         for f in range(len(self.fbandmins)):
                             fbandmin = self.fbandmins[f]
@@ -305,6 +308,7 @@ if __name__ == '__main__':
     import configparser
     config = configparser.ConfigParser()
     config.read(Path('display.py').resolve().parents[1]/'util/custom_config_processing.ini')
+    print(config['paths']['results_path'])
     dp = DataProcessing(config)
     dp.calculate()
     dp.plot_results()
