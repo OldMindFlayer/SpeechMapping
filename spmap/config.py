@@ -17,11 +17,6 @@ def config_init(argv):
     # handle arguments 
     parse_argv(config, argv)
     
-    if config['general'].getboolean('remove_procedure'):
-        config['display']['resting_time'] = '0'
-        config['display']['shuffle_pictures'] = 'false'
-
-    
     # Path autogeneration ignores path in config and generate path based on location of 'main.py'
     if config['general'].getboolean('root_path_autogeneration'):
         if len(Path('main.py').resolve().parents) >= 3:
@@ -46,9 +41,17 @@ def config_init(argv):
     experiment_data_path = patient_data_path/'experiment_data.h5'
     results_path = patient_data_path/'results'
     resource_path = root_path/'SpeechMapping/resources/'
+    picture_numbers_action_remove_path = date_patient_path/'picture_numbers_action_remove.txt'
+    picture_numbers_object_remove_path = date_patient_path/'picture_numbers_object_remove.txt'
     
     # create directories
     makedirs(results_path, exist_ok=True)
+    if not picture_numbers_action_remove_path.is_file():
+        with open(picture_numbers_action_remove_path, 'w') as file:
+            pass
+    if not picture_numbers_object_remove_path.is_file():
+        with open(picture_numbers_object_remove_path, 'w') as file:
+            pass
     
     # Create directory stucture for experiment and update config with 'patient_data_path'
     config['paths']['date_patient_path'] = str(date_patient_path)
@@ -59,9 +62,12 @@ def config_init(argv):
     config['paths']['pictures_objects_path'] = str(resource_path/'pictures_object/')
     config['paths']['pictures_others_path'] = str(resource_path/'pictures_other/')
     config['paths']['tone_path'] = str(resource_path/'sounds/tone.wav')
+    config['paths']['picture_numbers_action_remove'] = str(picture_numbers_action_remove_path)
+    config['paths']['picture_numbers_object_remove'] = str(picture_numbers_object_remove_path)
     if config['general'].getboolean('debug_mode'):
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
-    
+
+        
     
     for i in range(config['processing'].getint('grid_channel_from'), config['processing'].getint('grid_channel_to') + 1):
         config['channels']['{}'.format(i)] = str(i - config['processing'].getint('grid_channel_from') + 1)
@@ -74,17 +80,20 @@ def config_init(argv):
 
 # parse the command line arguments
 def parse_argv(config, argv):
+    config['general']['debug_mode'] = 'false'
+    config['general']['base_mode'] = 'false'
+    config['general']['remove_mode'] = 'false'
+    config['general']['awake_mobe'] = 'false'
+    
     # debug mode, uses lsl generator instead if amplifier data
     if '-debug' in argv:
         config['general']['debug_mode'] = 'true'
+    elif '-remove' in argv:
+        config['general']['remove_mode'] = 'true'
+    elif '-awake' in argv:
+        config['general']['awake_mobe'] = 'true'
     else:
-        config['general']['debug_mode'] = 'false'
-
-    # remove mode        
-    if '-remove' in argv:
-        config['general']['remove_procedure'] = 'true'
-    else:
-        config['general']['remove_procedure'] = 'false'
+        config['general']['base_mode'] = 'true'
 
 
 

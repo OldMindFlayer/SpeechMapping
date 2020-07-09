@@ -23,8 +23,8 @@ def start():
     # Queue is used to pass arguments from display thread to main thread (to LSL_Listener)
     q_from_display_to_listener = Queue()
     
-    # if removing procedure is conducting
-    if config['general'].getboolean('remove_procedure'):
+    # remove_mode does not use data from lsl, just show pictures
+    if config['general'].getboolean('remove_mode'):
         patient_display = Display(config, q_from_display_to_listener)
         patient_display.start()
         return
@@ -46,10 +46,10 @@ def start():
     lsl_listener = LSL_Listener(config, 2048, q_from_display_to_listener)
     
     # Activate Display if not debugging or if debugging with stream from LSL_Generator
-    if not config['general'].getboolean('debug_mode') or config['general'].getboolean('lsl_outlet_random'):
-        patient_display = Display(config, q_from_display_to_listener)
-        patient_display.start()
-        time.sleep(0.5)
+    #if not config['general'].getboolean('debug_mode') or config['general'].getboolean('lsl_outlet_random'):
+    patient_display = Display(config, q_from_display_to_listener)
+    patient_display.start()
+    time.sleep(0.5)
     
     # Type data saving
     if config['data_saving'].getboolean('save_through_buffer'):    

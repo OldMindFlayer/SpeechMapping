@@ -191,11 +191,9 @@ class DataProcessing():
                         ecog_concat = np.vstack((ecog_i,ecog_j));
                         #stim_concat = np.vstack((stim_i,stim_j));
                         
-                        print(ecog_i.shape, ecog_j.shape)
                         
                         ind_stim_i = np.argwhere(stim_i[:,0]==1)[:,0];
                         ind_stim_j = np.argwhere(stim_j[:,0]==1)[:,0];
-                        print(ind_stim_i, ind_stim_j)
                         
                         # find indices around stimulus onset
                         if( (ind_stim_i.shape[0]==0) & (ind_stim_j.shape[0]==0)):
@@ -204,7 +202,6 @@ class DataProcessing():
                             indj = np.zeros(0);
                             for k  in ind_stim_j:
                                 indj = np.append(indj, np.array(range( k+int(self.INTERVAL_START*self.SRATE[0]),k+int(self.INTERVAL_STOP*self.SRATE[0]))));
-                                print(indj.shape)
                             indi = np.array(range(0,min(ecog_i.shape[0],indj.shape[0])));
                         elif((ind_stim_i.shape[0]!=0) & (ind_stim_j.shape[0]==0)):      
                             indi = np.zeros(0);
@@ -221,12 +218,10 @@ class DataProcessing():
                            
                             indj = np.array(range(0,min(ecog_j.shape[0],indi.shape[0])));
                         
-                        print(indi, indj)
                         # cast as int
                         indi  = indi.astype(int);
                         indj = indj.astype(int);
-                        print(indi.shape, indj.shape)
-        
+                        
                         for f in range(len(self.fbandmins)):
                             fbandmin = self.fbandmins[f]
                             fbandmax = self.fbandmaxs[f]

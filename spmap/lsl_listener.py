@@ -95,7 +95,7 @@ class LSL_Listener():
                 self.buffer_length += big_sample.shape[0]
                 # if buffer is too big, save it
                 if self.buffer_length >= self.buffer_size:
-                    self._save_buffer(self.patient_state)
+                    self._save_buffer(current_patient_state)
         
         # if there is any data still in the buffer, save it before the end
         if self.buffer_length > 0:
