@@ -40,7 +40,7 @@ class DataProcessing():
         self.FSTEP   = 20;
         self.INTERVAL_START = config['processing'].getfloat('interval_start')
         self.INTERVAL_STOP  = config['processing'].getfloat('interval_stop')
-        self.data_groups = self.config['data_saving']['group_names'].split(' ')
+        self.data_groups = self.config['recorder']['group_names'].split(' ')
         
         self.VALS  = [0,1,1]; 
         self.PAIRS = [(0,1),(0,2)];
@@ -194,6 +194,7 @@ class DataProcessing():
                         
                         ind_stim_i = np.argwhere(stim_i[:,0]==1)[:,0];
                         ind_stim_j = np.argwhere(stim_j[:,0]==1)[:,0];
+                        print(ind_stim_i, ind_stim_j)
                         
                         # find indices around stimulus onset
                         if( (ind_stim_i.shape[0]==0) & (ind_stim_j.shape[0]==0)):

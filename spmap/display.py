@@ -14,11 +14,11 @@ import winsound
 import random
 import math
 from pathlib import Path
-
+from tqdm import tqdm, trange
 
 
 class Display:
-    def __init__(self, config, q_from_display_to_listener):
+    def __init__(self, config, q_from_display_to_recorder):
         self.config = config
 
         # get paths to resources
@@ -30,8 +30,8 @@ class Display:
         self.path_file_objects_remove = self.config['paths']['picture_numbers_object_remove']
         
         # command to LSL listener to start listen the stream
-        self.q_from_display_to_listener = q_from_display_to_listener
-        self.q_from_display_to_listener.put(('lsl_stream_listener_state', True))
+        self.q_from_display_to_recorder = q_from_display_to_recorder
+        self.q_from_display_to_recorder.put(('inlet_state', True))
         
         # initialize amount of time ALL pictures will be shown
         self.pictures_action_time = self.config['display'].getint('pictures_action_time')
@@ -72,6 +72,7 @@ class Display:
         self._load_pictures()
         self._prepare_pictures()
         
+        self.pause = False
         # initialise thread for display
         self.thread = Thread(target=self._update, args=())
         
@@ -83,7 +84,7 @@ class Display:
         
     def _update(self):
         # command to LSL listener
-        self.q_from_display_to_listener.put(('patient_state', 0))
+        self.q_from_display_to_recorder.put(('patient_state', -1))
         
         # prepare window for patient
         cv.namedWindow('display', cv.WINDOW_NORMAL)
@@ -92,11 +93,12 @@ class Display:
         cv.setWindowProperty('display', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
         
         # show time to rest
-        if self.config['display'].getint('resting_time') > 0:
-            self.q_from_display_to_listener.put(('patient_state', 1))
+        if self.config['display'].getint('resting_time') > 0:    
+            self._printm('Recording Rest state...')
+            self.q_from_display_to_recorder.put(('patient_state', 0))
             self._start_clock()
-            self.q_from_display_to_listener.put(('patient_state', 0))
-            print('Press ENTER on the display screen...')
+            self.q_from_display_to_recorder.put(('patient_state', -1))
+            self._printm('Press ENTER on the display screen...')
             while True:
                 cv.imshow('display', self.img_prepare_enter)
                 k = cv.waitKey(1000)
@@ -104,26 +106,29 @@ class Display:
                     break
         
         # demonstrate pictures
-        self.q_from_display_to_listener.put(('patient_state', 0))
+        self.q_from_display_to_recorder.put(('patient_state', -1))
         cv.imshow('display', self.pictures_other[1].img)
         cv.waitKey(self.time_other_pictures)
-        self.q_from_display_to_listener.put(('patient_state', 2))
-        self._show_pictures(self.pictures_action)
-        self.q_from_display_to_listener.put(('patient_state', 0))
+        self.q_from_display_to_recorder.put(('patient_state', 1))
+        self._printm('Showing pictures of actions...')
+        self._show_pictures(self.pictures_object)
+        self.q_from_display_to_recorder.put(('patient_state', -1))
         
         cv.imshow('display', self.pictures_other[2].img)
         cv.waitKey(self.time_other_pictures)
-        self.q_from_display_to_listener.put(('patient_state', 3))
-        self._show_pictures(self.pictures_object)
-        self.q_from_display_to_listener.put(('patient_state', 0))
+        self.q_from_display_to_recorder.put(('patient_state', 2))
+        self._printm('Showing pictures of actions...')
+        self._show_pictures(self.pictures_action)
+        self.q_from_display_to_recorder.put(('patient_state', -1))
         cv.imshow('display', self.pictures_other[3].img)
         cv.waitKey(self.time_other_pictures)
 
         # wait before closure
-        self.q_from_display_to_listener.put(('patient_state', 0))
+        self._printm('Press any button on the display screen...')
+        self.q_from_display_to_recorder.put(('patient_state', -1))
         cv.imshow('display', self.img_prepare_any)
         cv.waitKey(0)
-        self.q_from_display_to_listener.put(('lsl_stream_listener_state', False))
+        self.q_from_display_to_recorder.put(('inlet_state', False))
         
         '''
         # if remove procedure is active, write unknown picture numbers into files
@@ -150,13 +155,16 @@ class Display:
         
         
     def _start_clock(self):
-        t = time.perf_counter()
+        #t = time.perf_counter()
         resting_time = self.config['display'].getint('resting_time')
         img = np.zeros((self.WINDOW_X,self.WINDOW_Y,3), np.uint8)
-        while time.perf_counter() < t + resting_time:
-            time_pass = t + resting_time - time.perf_counter()
+        #while time.perf_counter() < t + resting_time:
+        
+            #time_pass = t + resting_time - time.perf_counter()
             #if int(time_pass) % 10 == 0:
-            print('Rest time: {} out of {}'.format(resting_time - int(time_pass), resting_time))
+        pbar = trange(resting_time)
+        for sec in pbar:    
+            pbar.set_description('Resting...')
             cv.imshow('display', img)
             k = cv.waitKey(1000)
             if k == 27:
@@ -172,11 +180,14 @@ class Display:
             cv.waitKey(self.time_between_pictures)
             if self.config['display'].getboolean('sound_between_pictures'):
                 winsound.PlaySound(None, winsound.SND_ASYNC)
-        for picture in pictures:
-            print('Show {} {}'.format(picture.get_type(), picture.get_number()))
-            self.q_from_display_to_listener.put(('picture_shown', True))
+        pbar = tqdm(pictures)
+        for picture in pbar:
+            pbar.set_description("Picture %s" % picture.get_number())
+            self.q_from_display_to_recorder.put(('picture_state', 1))
+            time.time()
             cv.imshow('display', picture.get_img())
             k = cv.waitKey(self.single_picture_time)
+            self.q_from_display_to_recorder.put(('picture_state', 2))
             if k == 27:
                 break
             if self.time_between_pictures > 0:
@@ -189,6 +200,8 @@ class Display:
                 if self.config['display'].getboolean('sound_between_pictures'):
                     winsound.PlaySound(None, winsound.SND_ASYNC)
  
+    def _pause(self):
+        pass
         
     
     def _load_pictures(self):
@@ -233,7 +246,7 @@ class Display:
         for i in range(len(picture_names_other)):
             self.pictures_other.append(Picture(self.path_other, picture_names_other[i]))
             
-        if self.config['data_saving'].getboolean('save_picture_numbers'):
+        if self.config['display'].getboolean('save_picture_numbers'):
             with open(self.config['paths']['patient_data_path'] + "/picture_numbers_action_remove.txt", "w") as file:
                 for number in self.picture_numbers_action_remove:
                     file.write(number + '\n')
@@ -255,6 +268,9 @@ class Display:
             number_of_pictures = math.ceil((pictures_time+self.time_between_pictures/1000)/(self.single_picture_time/1000+self.time_between_pictures/1000))
         return number_of_pictures
         
+    
+    def _printm(self, message):
+        print('{} {}: '.format(time.strftime('%H:%M:%S'), type(self).__name__) + message)
 
     
     

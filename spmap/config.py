@@ -65,6 +65,7 @@ def config_init(argv):
     config['paths']['picture_numbers_action_remove'] = str(picture_numbers_action_remove_path)
     config['paths']['picture_numbers_object_remove'] = str(picture_numbers_object_remove_path)
     if config['general'].getboolean('debug_mode'):
+        config['general']['lsl_stream_name'] = 'Debug'
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
 
         
