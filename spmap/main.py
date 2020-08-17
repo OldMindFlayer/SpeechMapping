@@ -11,7 +11,7 @@ from config import config_init
 import time
 from queue import Queue
 #from pathlib import Path
-from data_processing import DataProcessing
+from decoder import Decoder
 from sys import argv
 
 def start():
@@ -43,7 +43,7 @@ def start():
         time.sleep(2)
     
     # create LSL_Listener object    
-    recorder = Recorder(config, 2048, q_from_display_to_recorder)
+    recorder = Recorder(config, q_from_display_to_recorder)
     
     # Activate Display if not debugging or if debugging with stream from LSL_Generator
     #if not config['general'].getboolean('debug_mode') or config['general'].getboolean('lsl_outlet_random'):
@@ -53,12 +53,10 @@ def start():
     
     # Type data saving
     recorder.record()
-
     
     # process data and plot results
-    processing = DataProcessing(config)
-    processing.calculate()
-    processing.plot_results()
+    decoder = Decoder(config)
+    decoder.process_current_file()
     
 
 

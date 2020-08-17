@@ -40,12 +40,13 @@ def config_init(argv):
     patient_data_path = date_patient_path/(patient_time + '_experiment')
     experiment_data_path = patient_data_path/'experiment_data.h5'
     results_path = patient_data_path/'results'
+    r2_path = results_path/'R2.png'
     resource_path = root_path/'SpeechMapping/resources/'
     picture_numbers_action_remove_path = date_patient_path/'picture_numbers_action_remove.txt'
     picture_numbers_object_remove_path = date_patient_path/'picture_numbers_object_remove.txt'
     
     # create directories
-    makedirs(results_path, exist_ok=True)
+    makedirs(patient_data_path, exist_ok=True)
     if not picture_numbers_action_remove_path.is_file():
         with open(picture_numbers_action_remove_path, 'w') as file:
             pass
@@ -65,13 +66,13 @@ def config_init(argv):
     config['paths']['picture_numbers_action_remove'] = str(picture_numbers_action_remove_path)
     config['paths']['picture_numbers_object_remove'] = str(picture_numbers_object_remove_path)
     if config['general'].getboolean('debug_mode'):
-        config['general']['lsl_stream_name'] = 'Debug'
+        config['recorder']['lsl_stream_name'] = 'Debug'
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
 
         
     
-    for i in range(config['processing'].getint('grid_channel_from'), config['processing'].getint('grid_channel_to') + 1):
-        config['channels']['{}'.format(i)] = str(i - config['processing'].getint('grid_channel_from') + 1)
+    for i in range(config['decoder'].getint('grid_channel_from'), config['decoder'].getint('grid_channel_to') + 1):
+        config['channels']['{}'.format(i)] = str(i - config['decoder'].getint('grid_channel_from') + 1)
     
     experiment_config = patient_data_path/'experiment_config.ini'
     with open(experiment_config, 'w') as configfile:
