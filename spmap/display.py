@@ -51,14 +51,19 @@ class Display:
         self.pictures_other = []
         self.picture_types = [self.pictures_action, self.pictures_object, self.pictures_other]
         
-        # type of procidure: remove pictures or speech mapping
-        self.remove_mode = config['general'].getboolean('remove_mode')
+        # type of procidure: speech mapping
+        self.show_objects = config['general'].getboolean('show_objects_mode') or \
+                            config['general'].getboolean('debug_mode') or \
+                            config['general'].getboolean('base_mode')
+        self.show_actions = config['general'].getboolean('show_actions_mode') or \
+                            config['general'].getboolean('debug_mode') or \
+                            config['general'].getboolean('base_mode')
         self.picture_numbers_action_remove = []
         self.picture_numbers_object_remove = []
-        if not self.remove_mode and Path(self.path_file_actions_remove).is_file():
+        if Path(self.path_file_actions_remove).is_file():
             with open(self.path_file_actions_remove, 'r') as file:
                 self.picture_numbers_action_remove = list(map(str.strip, file.readlines()))
-        if not self.remove_mode and Path(self.path_file_objects_remove).is_file():
+        if Path(self.path_file_objects_remove).is_file():
             with open(self.path_file_objects_remove, 'r') as file:
                 self.picture_numbers_object_remove = list(map(str.strip, file.readlines()))
 
@@ -98,9 +103,10 @@ class Display:
         cv.namedWindow('display', cv.WINDOW_NORMAL)
         cv.imshow('display', self.image_button_any)
         cv.waitKey(0)
-        #cv.setWindowProperty('display', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
+        cv.setWindowProperty('display', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
         
         # show time to rest
+        self._printm(str(self.config['display'].getint('resting_time')))
         if self.config['display'].getint('resting_time') > 0:    
             self._printm('Recording Rest state...')
             self.q_from_display_to_recorder.put(('patient_state', 0))
@@ -113,23 +119,25 @@ class Display:
                 if k == 13:
                     break
         
-        # demonstrate pictures
-        self.q_from_display_to_recorder.put(('patient_state', -1))
-        cv.imshow('display', self.pictures_other[1].img)
-        cv.waitKey(self.time_other_pictures)
-        self.q_from_display_to_recorder.put(('patient_state', 1))
-        self._printm('Showing pictures of actions...')
-        self._show_pictures(self.pictures_object)
-        self.q_from_display_to_recorder.put(('patient_state', -1))
+        if self.show_objects:
+            # demonstrate pictures
+            self.q_from_display_to_recorder.put(('patient_state', -1))
+            cv.imshow('display', self.pictures_other[2].img)
+            cv.waitKey(self.time_other_pictures)
+            self.q_from_display_to_recorder.put(('patient_state', 1))
+            self._printm('Showing pictures of objects...')
+            self._show_pictures(self.pictures_object)
+            self.q_from_display_to_recorder.put(('patient_state', -1))
         
-        cv.imshow('display', self.pictures_other[2].img)
-        cv.waitKey(self.time_other_pictures)
-        self.q_from_display_to_recorder.put(('patient_state', 2))
-        self._printm('Showing pictures of actions...')
-        self._show_pictures(self.pictures_action)
-        self.q_from_display_to_recorder.put(('patient_state', -1))
-        cv.imshow('display', self.pictures_other[3].img)
-        cv.waitKey(self.time_other_pictures)
+        if self.show_actions:
+            cv.imshow('display', self.pictures_other[1].img)
+            cv.waitKey(self.time_other_pictures)
+            self.q_from_display_to_recorder.put(('patient_state', 2))
+            self._printm('Showing pictures of actions...')
+            self._show_pictures(self.pictures_action)
+            self.q_from_display_to_recorder.put(('patient_state', -1))
+            cv.imshow('display', self.pictures_other[3].img)
+            cv.waitKey(self.time_other_pictures)
 
         # wait before closure
         self._printm('Press any button on the display screen...')

@@ -6,7 +6,7 @@ import numpy.ma as ma
 from pathlib import Path
 import time
 from filterEMG import filterEMG, butter_bandstop_filter
-from models import linregress
+import models
 
 
 class Decoder():
@@ -26,6 +26,7 @@ class Decoder():
         self.INTERVAL_START = config['decoder'].getfloat('interval_start')
         self.INTERVAL_STOP  = config['decoder'].getfloat('interval_stop')
         self.single_picture_time = config['display'].getfloat('single_picture_time')
+        self.measure = config['decoder']['measure']
         
         # create direcoties based on path
         self.experiment_data_path = config['paths']['experiment_data_path']
@@ -47,13 +48,15 @@ class Decoder():
         processed_data = self.process_file(self.experiment_data_path)
         score_obj = self.prediction_score(processed_data[self.DATA_GROUPS[0]],
                                        processed_data[self.DATA_GROUPS[1]],
-                                       linregress, [])
+                                       models.get_model(self.measure))
         score_act = self.prediction_score(processed_data[self.DATA_GROUPS[0]],
                                        processed_data[self.DATA_GROUPS[2]],
-                                       linregress, [])
+                                       models.get_model(self.measure))
         self.save_score(self.DATA_GROUPS[1], score_obj.values)
         self.save_score(self.DATA_GROUPS[2], score_act.values)
         self.plot_results([score_obj, score_act], processed_data)
+        
+        
         
         
 
@@ -67,6 +70,7 @@ class Decoder():
                 picture_indices = np.array(file[group]['picture_indices'])
                 srate = file['fs'][()]
             processed_data[group] = self._process_data(group, raw_data, picture_indices, srate)
+        print()
         return processed_data
         
     # process raw data,         
@@ -97,7 +101,7 @@ class Decoder():
                              srate=srate)
 
 
-    def prediction_score(self, data_i, data_j, model, model_params):
+    def prediction_score(self, data_i, data_j, model, *args, **kwargs):
         # matricies to store score
         score = np.zeros((self.num_channels, len(self.fbandmins)))
 
@@ -116,7 +120,7 @@ class Decoder():
             indj = indices(data_j)
         else:
             indj = np.arange(data_j.data_ecog.shape[0])
-        indi = np.arange(min(indj.shape[0], data_j.data_ecog.shape[0]))
+        indi = np.arange(min(data_i.data_ecog.shape[0], indj.shape[0]))
         
         # if there is no pictures
         if indi.shape[0] == 0:
@@ -133,7 +137,7 @@ class Decoder():
             xj = filterEMG(data_j.data_ecog, fbandmin, fbandmax, data_j.srate)[indj]
             for channel in range(self.num_channels): 
                 if not bad_channels[channel]:
-                    score[channel, freq_index] = model(xi[:,[channel]], xj[:,[channel]], model_params)
+                    score[channel, freq_index] = model(xi[:,[channel]], xj[:,[channel]], args, kwargs)
         score[bad_channels, :] = 0            
         
         return Score(values = score,
@@ -155,12 +159,20 @@ class Decoder():
 
 
     def plot_results(self, scores, data):
-        plt.close('all');
-        nrows = len(scores)
-        ncols = scores[0].values.shape[1]
-        fig, ax = plt.subplots(nrows = 3,
-                               ncols = ncols,
+        plt.close('all')
+        plot_shape = (len(scores) + 1, scores[0].values.shape[1])
+        fig, ax = plt.subplots(nrows = plot_shape[0],
+                               ncols = plot_shape[1],
                                figsize=(12,8))
+        
+        def get_minmax_score(scores):
+            min_score, max_score = 0, 0.3
+            for score in scores:
+                min_score = np.amin(score.values) if np.amin(score.values) < min_score else min_score
+                max_score = np.amax(score.values) if np.amax(score.values) > max_score else max_score
+            return min_score, max_score
+        min_score, max_score = get_minmax_score(scores)
+        
         row_titles = ['R^2 objects', 'R^2 actions', '50Hz']
         col_titles = self.DATA_GROUPS
         
@@ -172,15 +184,15 @@ class Decoder():
         
         ecog_channel_grid = array_into_grid(np.arange(self.GRID_CHANNEL_FROM, self.GRID_CHANNEL_FROM + self.num_channels))
         print(ecog_channel_grid)
-        for i in range(nrows):
-            for b in range(ncols):
-                plt.subplot(3, ncols, i*ncols + (b+1))  
-                im = array_into_grid(scores[i].values[:,b])
+        for i in range(plot_shape[0] - 1):
+            for j in range(plot_shape[1]):
+                plt.subplot(plot_shape[0], plot_shape[1], (i*plot_shape[1] + j + 1))  
                 
-                bad_channels = np.logical_or(scores[i].data_i.bad_ch, scores[i].data_j.bad_ch)
-                
+                im = array_into_grid(scores[i].values[:,j])                
+                bad_channels = np.logical_or(scores[i].data_i.bad_ch, scores[i].data_j.bad_ch)                
                 im_masked = ma.masked_array(im, array_into_grid(bad_channels))
-                plt.imshow(im_masked, cmap = viridis_cm)
+
+                plt.imshow(im_masked, cmap = viridis_cm, vmin=min_score, vmax=max_score)
                 plt.colorbar()
                 
                 for m in range(self.GRID_Y):
@@ -188,17 +200,16 @@ class Decoder():
                         plt.text(n, m, str(ecog_channel_grid[m,n]), color='white', ha='center', va='center' )
                 plt.plot([0.5, 0.5], [-0.5, 1.5], color='silver', lw=2)
                 plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
-                plt.title(str(self.fbandmins[b])+'-'+str(self.fbandmaxs[b])+ ' Hz');
-                if b == 0:
+                plt.title(str(self.fbandmins[j])+'-'+str(self.fbandmaxs[j])+ ' Hz');
+                if j == 0:
                     plt.text(-10, 5, row_titles[i], size = 24)
                 plt.axis("off")
         
         
         
-        for b in range(3):
-            plt.subplot(3, ncols, ncols*2 + (b+1))
-            im = array_into_grid(data[self.DATA_GROUPS[b]].ecog_50hz_av)
-            #im = self.GRID50Hz[b]
+        for j in range(plot_shape[1]):
+            plt.subplot(3, plot_shape[1], plot_shape[1]*2 + (j+1))
+            im = array_into_grid(data[self.DATA_GROUPS[j]].ecog_50hz_av)
             plt.imshow(im)
             plt.colorbar();
             for m in range(self.GRID_Y):
@@ -206,8 +217,8 @@ class Decoder():
                     plt.text(n, m, str(ecog_channel_grid[m,n]), color='white', ha='center', va='center' )
             plt.plot([0.5, 0.5], [-0.5, 1.5], color='silver', lw=2)
             plt.plot([2.5, 2.5], [-0.5, 1.5], color='silver', lw=2)
-            plt.title(col_titles[b]);
-            if b == 0:
+            plt.title(col_titles[j]);
+            if j == 0:
                 plt.text(-8, 5, row_titles[2], size = 24)
             plt.axis("off")
         
@@ -228,6 +239,17 @@ class ProcessedData:
         self.ecog_50hz_av = ecog_50hz_av
         self.bad_ch = bad_ch
         self.srate = srate
+
+    def __repr__(self):
+        result = ''
+        result += self.name + '\n'
+        result += 'data_ecog shape: ' + str(self.data_ecog.shape) + '\n'
+        result += 'picture_indices shape: ' + str(self.picture_indices.shape) + '\n'
+        result += 'number of bad_ch: ' + str(np.sum(self.bad_ch)) + '\n'
+        result += 'srate: ' + str(self.srate) + '\n'
+        return result
+    
+
 
 class Score:
     def __init__(self, values, data_i, data_j):

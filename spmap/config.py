@@ -25,8 +25,9 @@ def config_init(argv):
             config['paths']['root_path'] = str(Path('main.py').resolve().parents[1])
             
     # Date and time autogeneration ignores values in config and generate them based on current date and time
-    if  config['general'].getboolean('patient_date_time_autogeneration'):
+    if  config['general'].getboolean('patient_date_autogeneration'):
         config['patient_info']['patient_date'] = time.strftime('%y%m%d')
+    if  config['general'].getboolean('patient_time_autogeneration'):
         config['patient_info']['patient_time'] = time.strftime('%H%M%S')
     
     # get parts of paths from config file
@@ -40,7 +41,7 @@ def config_init(argv):
     patient_data_path = date_patient_path/(patient_time + '_experiment')
     experiment_data_path = patient_data_path/'experiment_data.h5'
     results_path = patient_data_path/'results'
-    r2_path = results_path/'R2.png'
+    #r2_path = results_path/'R2.png'
     resource_path = root_path/'SpeechMapping/resources/'
     picture_numbers_action_remove_path = date_patient_path/'picture_numbers_action_remove.txt'
     picture_numbers_object_remove_path = date_patient_path/'picture_numbers_object_remove.txt'
@@ -65,10 +66,17 @@ def config_init(argv):
     config['paths']['tone_path'] = str(resource_path/'sounds/tone.wav')
     config['paths']['picture_numbers_action_remove'] = str(picture_numbers_action_remove_path)
     config['paths']['picture_numbers_object_remove'] = str(picture_numbers_object_remove_path)
+    
+    
+    
     if config['general'].getboolean('debug_mode'):
         config['recorder']['lsl_stream_name'] = 'Debug'
         config['paths']['lsl_stream_generator_path'] = str(root_path/'SpeechMapping/util/lsl_stream_generator.py')
 
+    if config['general'].getboolean('show_objects_mode') or config['general'].getboolean('show_actions_mode'):
+        config['display']['resting_time'] = '1'
+        
+        
         
     
     for i in range(config['decoder'].getint('grid_channel_from'), config['decoder'].getint('grid_channel_to') + 1):
@@ -83,17 +91,17 @@ def config_init(argv):
 # parse the command line arguments
 def parse_argv(config, argv):
     config['general']['debug_mode'] = 'false'
+    config['general']['show_objects_mode'] = 'false'
+    config['general']['show_actions_mode'] = 'false'
     config['general']['base_mode'] = 'false'
-    config['general']['remove_mode'] = 'false'
-    config['general']['awake_mobe'] = 'false'
     
     # debug mode, uses lsl generator instead if amplifier data
     if '-debug' in argv:
         config['general']['debug_mode'] = 'true'
-    elif '-remove' in argv:
-        config['general']['remove_mode'] = 'true'
-    elif '-awake' in argv:
-        config['general']['awake_mobe'] = 'true'
+    elif '-show_objects' in argv:
+        config['general']['show_objects_mode'] = 'true'
+    elif '-show_actions' in argv:
+        config['general']['show_actions_mode'] = 'true'
     else:
         config['general']['base_mode'] = 'true'
 

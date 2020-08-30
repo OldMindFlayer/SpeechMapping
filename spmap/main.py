@@ -24,10 +24,11 @@ def start():
     q_from_display_to_recorder = Queue()
     
     # remove_mode does not use data from lsl, just show pictures
-    if config['general'].getboolean('remove_mode'):
+    if config['general'].getboolean('show_objects_mode') or config['general'].getboolean('show_actions_mode'):
         patient_display = Display(config, q_from_display_to_recorder)
         patient_display.start()
         return
+    
     
     # Debug mode uses LSL_Generator for debuging
     if config['general'].getboolean('debug_mode'):
